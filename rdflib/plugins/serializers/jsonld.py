@@ -43,6 +43,7 @@ from rdflib.graph import DATASET_DEFAULT_GRAPH_ID, Graph, _ObjectType
 from rdflib.namespace import RDF, XSD
 from rdflib.serializer import Serializer
 from rdflib.term import BNode, IdentifiedNode, Identifier, Literal, URIRef
+from rdflib.term import Sequence
 
 from ..shared.jsonld.context import UNDEF, Context
 from ..shared.jsonld.keys import CONTEXT, GRAPH, ID, LANG, LIST, SET, VOCAB
@@ -275,7 +276,8 @@ class Converter:
             language = o.language
             term = context.find_term(str(p), datatype, language=language)
         else:
-            containers = [LIST, None] if graph.value(o, RDF.first) else [None]
+            # RDF-: a sequence term is a list; a legacy rdf:first/rdf:rest ladder is not
+            containers = [LIST, None] if isinstance(o, Sequence) else [None]
             for container in containers:
                 for coercion in (ID, VOCAB, UNDEF):
                     # type error: Argument 2 to "find_term" of "Context" has incompatible type "object"; expected "Union[str, Defined, None]"
@@ -417,8 +419,11 @@ class Converter:
                 return v
 
     def to_collection(self, graph: Graph, l_: Identifier):
-        if l_ != RDF.nil and not graph.value(l_, RDF.first):
-            return None
+        # RDF-: a sequence term is the list itself; a legacy rdf:first/rdf:rest ladder
+        # stays the blank nodes it is written with
+        if isinstance(l_, Sequence):
+            return list(l_.elements)
+        return None
         list_nodes: list[Optional[_ObjectType]] = []
         chain = set([l_])
         while l_:

@@ -26,6 +26,14 @@ MAPPER = URIMapper.from_mappings(
     (REMOTE_BASE_IRI, ensure_suffix(LOCAL_BASE_DIR.as_uri(), "/")),
 )
 MARK_DICT: MarksDictType = {
+    # RDF-: `( ?v ?w )` in a pattern is one sequence term; its variables are not
+    # unified with the elements of the data's sequences
+    f"{REMOTE_BASE_IRI}basic/manifest#list-3": pytest.mark.xfail(
+        reason="RDF-: variables inside a sequence pattern are not unified with a sequence's elements"
+    ),
+    f"{REMOTE_BASE_IRI}basic/manifest#list-4": pytest.mark.xfail(
+        reason="RDF-: variables inside a sequence pattern are not unified with a sequence's elements"
+    ),
     f"{REMOTE_BASE_IRI}basic/manifest#term-6": pytest.mark.skip(
         reason="using Sparql 1.1 which is not backwards compatible. "
         "'456.' will be interpreted differently in query and data."

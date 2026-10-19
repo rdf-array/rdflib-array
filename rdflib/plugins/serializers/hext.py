@@ -12,7 +12,7 @@ from typing import IO, Any, Optional, Union, cast
 
 from rdflib.graph import DATASET_DEFAULT_GRAPH_ID, ConjunctiveGraph, Dataset, Graph
 from rdflib.namespace import RDF, XSD
-from rdflib.serializer import Serializer
+from rdflib.serializer import Serializer, refuse_sequence_terms
 from rdflib.term import BNode, IdentifiedNode, Literal, URIRef
 
 try:
@@ -97,6 +97,7 @@ class HextuplesSerializer(Serializer):
             raise Exception(
                 "Hextuple serialization can't (yet) handle formula-aware stores"
             )
+        refuse_sequence_terms(self.store, "HexTuples")
         context: Union[Graph, IdentifiedNode]
         context_str: Union[bytes, str]
         for context in self.contexts:

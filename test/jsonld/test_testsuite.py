@@ -18,6 +18,15 @@ unsupported_tests += (
 )
 unsupported_tests += ("flatten", "compact", "expand")
 unsupported_tests += ("html",)
+# RDF-: a JSON-LD @list is one sequence term, and a graph's rdf:first/rdf:rest ladder
+# is not a list: these cases' fixtures spell lists as ladders (or an empty list as
+# rdf:nil) on the RDF side, so they cannot agree with an RDF- reading.
+unsupported_tests += (
+    "fromRdf-0004-in", "fromRdf-0005-in", "fromRdf-0006-in", "fromRdf-0009-in", "fromRdf-0011-in",
+    "fromRdf-0013-in", "fromRdf-0014-in", "fromRdf-0016-in",
+    "toRdf-0013-in", "toRdf-0014-in", "toRdf-0015-in", "toRdf-0025-in", "toRdf-0036-in", "toRdf-0044-in",
+    "toRdf-0055-in", "toRdf-0056-in", "toRdf-0063-in", "toRdf-0067-in", "toRdf-0069-in", "toRdf-0102-in",
+)
 
 known_bugs = (
     # invalid nquads (bnode as predicate)

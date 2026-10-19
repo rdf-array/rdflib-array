@@ -312,6 +312,7 @@ from rdflib.term import (
     Node,
     RDFLibGenid,
     URIRef,
+    Sequence,
 )
 
 if TYPE_CHECKING:
@@ -1203,6 +1204,9 @@ class Graph(Node):
         Args:
             list: An RDF collection.
         """
+        if isinstance(list, Sequence):  # RDF-: a collection is one sequence term
+            yield from list.elements
+            return
         chain = set([list])
         while list:
             item = self.value(list, RDF.first)
@@ -2064,6 +2068,14 @@ class Graph(Node):
         else:
             subgraph = target_graph
 
+        def bnodes_in(o: Node) -> Generator[BNode, None, None]:
+            # RDF-: the blank nodes an object leads to: itself, or the elements of a sequence
+            if type(o) is BNode:
+                yield o
+            elif isinstance(o, Sequence):
+                for e in o.elements:
+                    yield from bnodes_in(e)
+
         def add_to_cbd(uri: _SubjectType) -> None:
             # Rule 3 Preparation:
             # If reifications are to be included, build an index mapping triples with
@@ -2084,9 +2096,11 @@ class Graph(Node):
             for s, p, o in self.triples((uri, None, None)):
                 # Add the triple to the CBD subgraph
                 subgraph.add((s, p, o))
-                # If the object is a blank node, recursively add its CBD (Rule 2)
-                if type(o) is BNode and (o, None, None) not in subgraph:
-                    add_to_cbd(o)
+                # If the object is a blank node, or (RDF-) a sequence holding blank
+                # nodes, recursively add their CBDs (Rule 2)
+                for b in bnodes_in(o):
+                    if (b, None, None) not in subgraph:
+                        add_to_cbd(b)
 
                 # If including reifications (Rule 3):
                 if include_reifications:
@@ -2098,6 +2112,10 @@ class Graph(Node):
 
         # Start the CBD construction from the given resource
         add_to_cbd(resource)
+        if isinstance(resource, Sequence):  # RDF-: a sequence's description is its blank nodes'
+            for b in bnodes_in(resource):
+                if (b, None, None) not in subgraph:
+                    add_to_cbd(b)
 
         return subgraph
 

@@ -27,6 +27,7 @@ from rdflib import BNode, ConjunctiveGraph, Graph
 from rdflib.graph import Dataset
 from rdflib.plugin import Plugin
 from rdflib.term import IdentifiedNode, Identifier, Literal, Node, URIRef
+from rdflib.term import Sequence
 
 PluginT = TypeVar("PluginT")
 
@@ -95,8 +96,19 @@ class GraphHelper:
         if isinstance(node, Graph):
             xset = cast(GHNode, cls.triple_or_quad_set(node, bnode_handling))
             return xset
+        if isinstance(node, Sequence) and cls._holds_graph(node):
+            # RDF-: a formula inside a sequence term compares by its triple set, as a
+            # formula node does; the sequence becomes the tuple of its converted elements
+            return cast(GHNode, tuple(cls.node(e, bnode_handling) for e in node.elements))
 
         return cast(Identifier, node)
+
+    @classmethod
+    def _holds_graph(cls, seq: Sequence) -> bool:
+        return any(
+            isinstance(e, Graph) or (isinstance(e, Sequence) and cls._holds_graph(e))
+            for e in seq.elements
+        )
 
     @classmethod
     def nodes(
@@ -118,7 +130,9 @@ class GraphHelper:
         Return true if any of the nodes are BNodes.
         """
         for node in nodes:
-            if isinstance(node, BNode):
+            if isinstance(node, BNode) or (
+                isinstance(node, Sequence) and cls._contains_bnodes(tuple(node.elements))  # RDF-
+            ) or (isinstance(node, tuple) and cls._contains_bnodes(node)):  # RDF-: converted sequence
                 return True
         return False
 
@@ -129,11 +143,18 @@ class GraphHelper:
         """
         result: list[NodeT] = []
         for node in nodes:
-            if isinstance(node, BNode):
-                result.append(cast(NodeT, COLLAPSED_BNODE))
-            else:
-                result.append(node)
+            result.append(cls._collapse_node(node))
         return tuple(result)
+
+    @classmethod
+    def _collapse_node(cls, node: NodeT) -> NodeT:
+        if isinstance(node, BNode):
+            return cast(NodeT, COLLAPSED_BNODE)
+        if isinstance(node, Sequence):  # RDF-: the blank nodes a sequence holds, too
+            return cast(NodeT, Sequence(cls._collapse_node(e) for e in node.elements))
+        if isinstance(node, tuple):  # RDF-: a sequence converted by node() because it holds a formula
+            return cast(NodeT, tuple(cls._collapse_node(e) for e in node))
+        return node
 
     @classmethod
     def triple_set(

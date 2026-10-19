@@ -62,6 +62,7 @@ from rdflib.term import (
     URIRef,
     Variable,
     _unique_id,
+    Sequence,
 )
 
 if TYPE_CHECKING:
@@ -1893,23 +1894,11 @@ class RDFSink:
         else:
             return Literal(s, lang=lang)
 
-    def newList(self, n: list[Any], f: Optional[Formula]) -> IdentifiedNode:
-        nil = self.newSymbol("http://www.w3.org/1999/02/22-rdf-syntax-ns#nil")
-        if not n:
-            return nil
-
-        first = self.newSymbol("http://www.w3.org/1999/02/22-rdf-syntax-ns#first")
-        rest = self.newSymbol("http://www.w3.org/1999/02/22-rdf-syntax-ns#rest")
-        af = a = self.newBlankNode(f)
-
-        for ne in n[:-1]:
-            self.makeStatement((f, first, a, ne))
-            an = self.newBlankNode(f)
-            self.makeStatement((f, rest, a, an))
-            a = an
-        self.makeStatement((f, first, a, n[-1]))
-        self.makeStatement((f, rest, a, nil))
-        return af
+    def newList(self, n: list[Any], f: Optional[Formula]) -> Sequence:
+        # RDF-: a collection is one sequence term; there are no rdf:first/rdf:rest
+        # statements to make, and () is the empty sequence, not rdf:nil.  The items
+        # are as the parser read them (ints, tuples for symbols, ...) until normalised.
+        return Sequence(self.normalise(f, e) for e in n)
 
     def newSet(self, *args: _AnyT) -> set[_AnyT]:
         return set(args)

@@ -71,13 +71,15 @@ def expandTriples(terms: ParseResults) -> list[Any]:
                     continue  # this semicolon is spurious
                 res.append(last_subject)
             elif isinstance(t, list):
-                # BlankNodePropertyList
+                # BlankNodePropertyList, or (RDF-) a Collection: t[0] is the node, the
+                # rest its triples -- which for a [ .. ] start with the node itself
                 # is this bnode the object of previous triples?
                 if (len(res) % 3) == 2:
                     res.append(t[0])
                 # is this a single [] ?
                 if len(t) > 1:
-                    res += t  # Don't update last_subject/last_predicate
+                    # Don't update last_subject/last_predicate
+                    res += t[1:] if isinstance(t[0], rdflib.term.Sequence) else t
                 # is this bnode the subject of more triples?
                 if i + 1 < l_ and terms[i + 1] not in [
                     ".",
@@ -96,6 +98,11 @@ def expandTriples(terms: ParseResults) -> list[Any]:
                     last_predicate = t
             if DEBUG:
                 print(len(res), t)
+        # RDF-: a collection standing alone, `{ ( 1 2 ) }`, is one term and no
+        # triples (its cells were triples in RDF 1.1)
+        if len(res) % 3 == 1 and isinstance(res[-1], rdflib.term.Sequence):
+            res.pop()
+
         if DEBUG:
             import json
 
@@ -132,32 +139,27 @@ def expandBNodeTriples(terms: ParseResults) -> list[Any]:
         raise
 
 
-def expandCollection(terms: ParseResults) -> list[list[Any]]:
+def expandCollection(terms: ParseResults) -> list[Any]:
     """
-    expand ( 1 2 3 ) notation for collections
+    RDF-: ( 1 2 3 ) is one sequence term, not rdf:first/rdf:rest triples.
+    The result is the term alone, or [term, *triples] when an element was a
+    [ .. ] (or a nested collection) with triples of its own.
     """
     if DEBUG:
         print("Collection: ", terms)
 
-    res: list[Any] = []
-    other = []
+    elements: list[Any] = []
+    other: list[Any] = []
     for x in terms:
-        if isinstance(x, list):  # is this a [ .. ] ?
-            other += x
+        if isinstance(x, list):  # is this a [ .. ] or a nested collection?
+            other += x[1:] if isinstance(x[0], rdflib.term.Sequence) else x
             x = x[0]
-
-        b = rdflib.BNode()
-        if res:
-            res += [res[-3], rdflib.RDF.rest, b, b, rdflib.RDF.first, x]
-        else:
-            res += [b, rdflib.RDF.first, x]
-    res += [b, rdflib.RDF.rest, rdflib.RDF.nil]
-
-    res += other
+        elements.append(x)
+    seq = rdflib.term.Sequence(elements)
 
     if DEBUG:
-        print("CollectionOut", res)
-    return [res]
+        print("CollectionOut", seq, other)
+    return [[seq] + other] if other else [seq]
 
 
 # SPARQL Grammar from http://www.w3.org/TR/sparql11-query/#grammar
@@ -419,8 +421,13 @@ BooleanLiteral = Keyword("true").set_parse_action(
 # [138] BlankNode ::= BLANK_NODE_LABEL | ANON
 BlankNode = BLANK_NODE_LABEL | ANON
 
+# RDF-: as a graph term, () is the empty sequence, not rdf:nil (NIL stays rdf:nil
+# where it is an empty argument list)
+GraphNil = Literal("(") + ")"
+GraphNil.set_parse_action(lambda x: rdflib.term.Sequence())
+
 # [109] GraphTerm ::= iri | RDFLiteral | NumericLiteral | BooleanLiteral | BlankNode | NIL
-GraphTerm = iri | RDFLiteral | NumericLiteral | BooleanLiteral | BlankNode | NIL
+GraphTerm = iri | RDFLiteral | NumericLiteral | BooleanLiteral | BlankNode | GraphNil
 
 # [106] VarOrTerm ::= Var | GraphTerm
 VarOrTerm = Var | GraphTerm

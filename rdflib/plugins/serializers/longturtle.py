@@ -25,9 +25,9 @@ from rdflib.compare import to_canonical_graph
 from rdflib.exceptions import Error
 from rdflib.graph import Graph, _TripleType
 from rdflib.namespace import RDF
-from rdflib.term import BNode, Literal, URIRef
+from rdflib.term import BNode, Literal, Sequence, URIRef
 
-from .turtle import RecursiveSerializer
+from .turtle import RecursiveSerializer, _sequence_leaves
 
 __all__ = ["LongTurtleSerializer"]
 
@@ -170,6 +170,12 @@ class LongTurtleSerializer(RecursiveSerializer):
             self.get_pname(node, gen_prefix=(i == VERB))
             if isinstance(node, Literal) and node.datatype:
                 self.get_pname(node.datatype, gen_prefix=_GEN_QNAME_FOR_DT)
+            if isinstance(node, Sequence):
+                # RDF-: the terms inside a sequence need their prefixes declared too
+                for e in _sequence_leaves(node):
+                    self.get_pname(e, gen_prefix=False)
+                    if isinstance(e, Literal) and e.datatype:
+                        self.get_pname(e.datatype, gen_prefix=_GEN_QNAME_FOR_DT)
         p = triple[1]
         if isinstance(p, BNode):  # hmm - when is P ever a bnode?
             self._references[p] += 1
@@ -253,9 +259,25 @@ class LongTurtleSerializer(RecursiveSerializer):
 
     def path(self, node, position, newline=False):
         if not (
-            self.p_squared(node, position) or self.p_default(node, position, newline)
+            self.p_squared(node, position)
+            or self.p_sequence(node, position)
+            or self.p_default(node, position, newline)
         ):
             raise Error("Cannot serialize node '%s'" % (node,))
+
+    def p_sequence(self, node, position):
+        # RDF-: a sequence object is written one element per line, as the
+        # rdf:first/rdf:rest collections this serializer used to inline were
+        if not isinstance(node, Sequence) or position == SUBJECT or len(node) == 0:
+            return False
+        self.depth += 2
+        self.write(" (\n")
+        self.depth -= 2
+        for i, item in enumerate(node.elements):
+            self.write(self.indent(1) if i == 0 else "\n" + self.indent(1))
+            self.path(item, OBJECT, newline=True)
+        self.write("\n" + self.indent() + ")")
+        return True
 
     def p_default(self, node, position, newline=False):
         if position != SUBJECT and not newline:
@@ -264,8 +286,9 @@ class LongTurtleSerializer(RecursiveSerializer):
         return True
 
     def label(self, node, position):
-        if node == RDF.nil:
-            return "()"
+        if isinstance(node, Sequence):  # RDF-: a sequence writes as a collection of its elements
+            return "(" + " ".join(self.label(e, OBJECT) for e in node.elements) + ")"
+        # (RDF-: rdf:nil is written as the IRI it is; "()" is the empty sequence)
         if position is VERB and node in self.keywords:
             return self.keywords[node]
         if isinstance(node, Literal):
@@ -291,21 +314,14 @@ class LongTurtleSerializer(RecursiveSerializer):
         ):
             return False
 
-        if self.isValidList(node):
-            # this is a list
-            self.depth += 2
-            self.write(" (\n")
-            self.depth -= 2
-            self.doList(node)
-            self.write("\n" + self.indent() + ")")
-        else:
-            # this is a Blank Node
-            self.subjectDone(node)
-            self.write("\n" + self.indent(1) + "[\n")
-            self.depth += 1
-            self.predicateList(node)
-            self.depth -= 1
-            self.write("\n" + self.indent(1) + "]")
+        # RDF-: `( ... )` is a sequence term, so a legacy rdf:first/rdf:rest ladder is
+        # written as the blank node property list it is, never as a collection
+        self.subjectDone(node)
+        self.write("\n" + self.indent(1) + "[\n")
+        self.depth += 1
+        self.predicateList(node)
+        self.depth -= 1
+        self.write("\n" + self.indent(1) + "]")
 
         return True
 

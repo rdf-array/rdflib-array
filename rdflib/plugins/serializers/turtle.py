@@ -22,7 +22,7 @@ from rdflib.exceptions import Error
 from rdflib.graph import Graph
 from rdflib.namespace import RDF, RDFS
 from rdflib.serializer import Serializer
-from rdflib.term import BNode, Literal, Node, URIRef
+from rdflib.term import BNode, Literal, Node, Sequence, URIRef
 
 _StrT = TypeVar("_StrT", bound=str)
 
@@ -104,6 +104,12 @@ class RecursiveSerializer(Serializer):
     def preprocessTriple(self, spo: _TripleType) -> None:
         s, p, o = spo
         self._references[o] += 1
+        # RDF-: a blank node inside a sequence term is referenced by it, so its own
+        # statements are written under its label rather than as an anonymous [] subject
+        for term in (s, o):
+            if isinstance(term, Sequence):
+                for b in _bnodes_in_sequence(term):
+                    self._references[b] += 1
         self._subjects[s] = True
 
     def reset(self) -> None:
@@ -189,6 +195,20 @@ class RecursiveSerializer(Serializer):
             # type error: Incompatible types in assignment (expression has type "str", variable has type "Node")
             uri = URIRef(uri.replace(base, "", 1))  # type: ignore[assignment]
         return uri
+
+
+def _sequence_leaves(seq: Sequence):
+    """RDF-: the terms a sequence term holds, nested sequences flattened."""
+    for e in seq.elements:
+        if isinstance(e, Sequence):
+            yield from _sequence_leaves(e)
+        else:
+            yield e
+
+
+def _bnodes_in_sequence(seq: Sequence):
+    """RDF-: the blank nodes a sequence term holds, nested sequences included."""
+    return (e for e in _sequence_leaves(seq) if isinstance(e, BNode))
 
 
 SUBJECT = 0
@@ -306,6 +326,12 @@ class TurtleSerializer(RecursiveSerializer):
             self.get_pname(node, gen_prefix=(i == VERB))
             if isinstance(node, Literal) and node.datatype:
                 self.get_pname(node.datatype, gen_prefix=_GEN_QNAME_FOR_DT)
+            if isinstance(node, Sequence):
+                # RDF-: the terms inside a sequence need their prefixes declared too
+                for e in _sequence_leaves(node):
+                    self.get_pname(e, gen_prefix=False)
+                    if isinstance(e, Literal) and e.datatype:
+                        self.get_pname(e.datatype, gen_prefix=_GEN_QNAME_FOR_DT)
         p = triple[1]
         if isinstance(p, BNode):  # hmm - when is P ever a bnode?
             self._references[p] += 1
@@ -391,10 +417,27 @@ class TurtleSerializer(RecursiveSerializer):
 
     def path(self, node: Node, position: int, newline: bool = False) -> None:
         if not (
-            self.p_squared(node, position, newline)
+            self.p_sequence(node, position, newline)
+            or self.p_squared(node, position, newline)
             or self.p_default(node, position, newline)
         ):
             raise Error("Cannot serialize node '%s'" % (node,))
+
+    def p_sequence(self, node: Node, position: int, newline: bool = False) -> bool:
+        """RDF-: a sequence term is written as the collection ``(e1 e2 …)`` of its
+        elements. Each element goes through :meth:`path`, so a blank node that only
+        the sequence refers to is written as its ``[ … ]`` property list and, in N3,
+        a formula as its ``{ … }``, just as in any other object position."""
+        if not isinstance(node, Sequence):
+            return False
+        if position != SUBJECT and not newline:
+            self.write(" ")
+        self.write("(")
+        for i, e in enumerate(node.elements):
+            # newline=True only suppresses the leading space the first element would get
+            self.path(e, OBJECT, newline=(i == 0))
+        self.write(")")
+        return True
 
     def p_default(self, node: Node, position: int, newline: bool = False) -> bool:
         if position != SUBJECT and not newline:
@@ -403,8 +446,11 @@ class TurtleSerializer(RecursiveSerializer):
         return True
 
     def label(self, node: Node, position: int) -> str:
-        if node == RDF.nil:
-            return "()"
+        if isinstance(node, Sequence):
+            # RDF-: a sequence writes as a collection of its elements (path() normally
+            # takes a sequence before it gets here; this serves callers that want a string)
+            return "(" + " ".join(self.label(e, OBJECT) for e in node.elements) + ")"
+        # (RDF-: rdf:nil is written as the IRI it is; "()" is the empty sequence)
         if position is VERB and node in self.keywords:
             return self.keywords[node]
         if isinstance(node, Literal):
@@ -429,24 +475,18 @@ class TurtleSerializer(RecursiveSerializer):
         if not newline:
             self.write(" ")
 
-        if self.isValidList(node):
-            # this is a list
-            self.write("(")
-            self.depth += 1  # 2
-            self.doList(node)
-            self.depth -= 1  # 2
-            self.write(" )")
-        else:
-            self.subjectDone(node)
-            self.depth += 2
-            # self.write('[\n' + self.indent())
-            self.write("[")
-            self.depth -= 1
-            # self.predicateList(node, newline=True)
-            self.predicateList(node, newline=False)
-            # self.write('\n' + self.indent() + ']')
-            self.write(" ]")
-            self.depth -= 1
+        # RDF-: `( ... )` is a sequence term, so a legacy rdf:first/rdf:rest ladder is
+        # written as the blank node property list it is, never as a collection
+        self.subjectDone(node)
+        self.depth += 2
+        # self.write('[\n' + self.indent())
+        self.write("[")
+        self.depth -= 1
+        # self.predicateList(node, newline=True)
+        self.predicateList(node, newline=False)
+        # self.write('\n' + self.indent() + ']')
+        self.write(" ]")
+        self.depth -= 1
 
         return True
 

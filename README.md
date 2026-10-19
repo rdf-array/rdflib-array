@@ -1,3 +1,32 @@
+<img src=".github/rdf-array-logo.png" alt="[RDFLib]" width="96" align="right">
+
+# rdflib-array: RDFLib for RDF-
+
+**RDF-** fork of [RDFLib](https://github.com/RDFLib/rdflib): the data model gets a fifth kind of
+term, the **sequence**, `rdflib.term.Sequence`. In Turtle-, N3-, TriG-, N-Triples- and N-Quads-
+`(1 2 3)` is one term holding its elements in order and `()` is the empty sequence; neither is an
+`rdf:first`/`rdf:rest` ladder or `rdf:nil`, which stay the ordinary triples and IRI they are. A
+JSON-LD `@list` is a sequence, a SPARQL collection `( … )` is a sequence term, and `Graph.items`,
+`rdflib.collection.Collection`, `Graph.cbd`, `rdflib.compare` and the SHACL property paths know the
+new term; the Turtle, long Turtle, N3, N-Triples, N-Quads and JSON-LD serializers write it back.
+
+```python
+from rdflib import Graph
+from rdflib.term import Sequence
+
+g = Graph().parse(data='<http://a.example/s> <http://a.example/p> (1 (2 3) "x") .', format="turtle")
+(seq,) = g.objects()                  # one triple, whose object is one term
+isinstance(seq, Sequence), len(seq)   # (True, 3)
+seq[1].elements                       # (Literal('2'), Literal('3'))
+print(g.serialize(format="turtle"))   # … ns1:s ns1:p (1 (2 3) "x") .
+```
+
+[docs/rdf-array.md](docs/rdf-array.md) has the details, the W3C and round-trip tests flagged as
+ladder-dependent and what is not done; the sibling forks (PyShEx-array and the ShEx- stack) are
+listed in [PyShEx-array](https://github.com/rdf-array/PyShEx-array)'s doc/rdf-array.md.
+
+---
+
 ![](docs/_static/RDFlib.png)
 
 # RDFLib

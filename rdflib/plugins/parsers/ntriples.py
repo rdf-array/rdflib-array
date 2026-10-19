@@ -26,6 +26,7 @@ from rdflib.parser import InputSource, Parser
 from rdflib.term import BNode as bNode
 from rdflib.term import Literal, URIRef
 from rdflib.term import URIRef as URI  # noqa: N814
+from rdflib.term import Sequence
 
 if TYPE_CHECKING:
     import typing_extensions as te
@@ -49,6 +50,8 @@ r_line = re.compile(r"([^\r\n]*)(?:\r\n|\r|\n)")
 r_wspace = re.compile(r"[ \t]*")
 r_wspaces = re.compile(r"[ \t]+")
 r_tail = re.compile(r"[ \t]*\.[ \t]*(#.*)?")
+r_lparen = re.compile(r"\(")
+r_rparen = re.compile(r"\)")
 r_uriref = re.compile(uriref)
 r_nodeid = re.compile(r"_:([A-Za-z0-9_:]([-A-Za-z0-9_:\.]*[-A-Za-z0-9_:])?)")
 r_literal = re.compile(literal + litinfo)
@@ -274,8 +277,10 @@ class W3CNTriplesParser:
     def subject(self, bnode_context=None) -> Union[bNode, URIRef]:
         # @@ Consider using dictionary cases
         subj = self.uriref() or self.nodeid(bnode_context)
-        if not subj:
-            raise ParseError("Subject must be uriref or nodeID")
+        if subj is False:
+            subj = self.sequence(bnode_context)
+        if subj is False:
+            raise ParseError("Subject must be uriref, nodeID or sequence")
         return subj
 
     def predicate(self) -> Union[bNode, URIRef]:
@@ -287,10 +292,31 @@ class W3CNTriplesParser:
     def object(
         self, bnode_context: Optional[_BNodeContextType] = None
     ) -> Union[URI, bNode, Literal]:
-        objt = self.uriref() or self.nodeid(bnode_context) or self.literal()
+        objt = self.uriref() or self.nodeid(bnode_context)
+        if objt is False:
+            objt = self.literal()  # an empty literal is falsy, so not `or`-chained
+        if objt is False:
+            objt = self.sequence(bnode_context)
         if objt is False:
             raise ParseError("Unrecognised object type")
         return objt
+
+    def sequence(
+        self, bnode_context: Optional[_BNodeContextType] = None
+    ) -> Union[te.Literal[False], Sequence]:
+        """RDF-: ``( e1 e2 )`` is one sequence term; ``()`` is the empty sequence."""
+        if not self.peek("("):
+            return False
+        self.eat(r_lparen)
+        elements: list[Any] = []
+        while True:
+            self.eat(r_wspace)
+            if self.peek(")"):
+                self.eat(r_rparen)
+                return Sequence(elements)
+            if not self.line:
+                raise ParseError("Unterminated sequence")
+            elements.append(self.object(bnode_context))
 
     def uriref(self) -> Union[te.Literal[False], URI]:
         if self.peek("<"):

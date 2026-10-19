@@ -10,7 +10,7 @@ from rdflib.graph import Graph
 from rdflib.namespace import RDF, RDFS, Namespace  # , split_uri
 from rdflib.plugins.parsers.RDFVOC import RDFVOC
 from rdflib.plugins.serializers.xmlwriter import XMLWriter
-from rdflib.serializer import Serializer
+from rdflib.serializer import Serializer, refuse_sequence_terms
 from rdflib.term import BNode, IdentifiedNode, Identifier, Literal, Node, URIRef
 from rdflib.util import first, more_than
 
@@ -52,6 +52,7 @@ class XMLSerializer(Serializer):
         encoding: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
+        refuse_sequence_terms(self.store, "RDF/XML")
         # if base is given here, use that, if not and a base is set for the graph use that
         if base is not None:
             self.base = base
@@ -185,6 +186,7 @@ class PrettyXMLSerializer(Serializer):
     ) -> None:
         self.__serialized: dict[Identifier, int] = {}
         store = self.store
+        refuse_sequence_terms(store, "RDF/XML")
         # if base is given here, use that, if not and a base is set for the graph use that
         if base is not None:
             self.base = base

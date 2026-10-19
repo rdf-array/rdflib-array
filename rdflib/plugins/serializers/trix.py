@@ -5,7 +5,7 @@ from typing import IO, Any, Optional
 from rdflib.graph import ConjunctiveGraph, Graph
 from rdflib.namespace import Namespace
 from rdflib.plugins.serializers.xmlwriter import XMLWriter
-from rdflib.serializer import Serializer
+from rdflib.serializer import Serializer, refuse_sequence_terms
 from rdflib.term import BNode, Literal, URIRef
 
 __all__ = ["TriXSerializer"]
@@ -32,6 +32,7 @@ class TriXSerializer(Serializer):
         encoding: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
+        refuse_sequence_terms(self.store, "TriX")
         nm = self.store.namespace_manager
 
         self.writer = XMLWriter(stream, nm, encoding, extra_ns={"": TRIXNS})

@@ -21,9 +21,30 @@ if TYPE_CHECKING:
     from rdflib.graph import Graph
 
 
-__all__ = ["Serializer"]
+__all__ = ["Serializer", "refuse_sequence_terms"]
 
 _StrT = TypeVar("_StrT", bound=str)
+
+
+def refuse_sequence_terms(graph: Graph, syntax: str) -> None:
+    """RDF-: raise for a graph that holds a sequence term, on behalf of a syntax that has
+    no form for one (RDF/XML, TriX, HexTuples), rather than write something that would
+    read back as a different graph."""
+    from rdflib.exceptions import Error
+    from rdflib.graph import ConjunctiveGraph
+    from rdflib.term import Sequence
+
+    triples = (
+        ((s, p, o) for s, p, o, _ in graph.quads((None, None, None, None)))
+        if isinstance(graph, ConjunctiveGraph)
+        else iter(graph)
+    )
+    for s, _, o in triples:
+        for term in (s, o):
+            if isinstance(term, Sequence):
+                raise Error(
+                    f"RDF-: {syntax} has no form for a sequence term; the graph holds {term.n3()}"
+                )
 
 
 class Serializer:

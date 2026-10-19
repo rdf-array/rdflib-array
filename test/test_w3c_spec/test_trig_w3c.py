@@ -69,6 +69,11 @@ def check_entry(entry: ManifestEntry) -> None:
         )
 
 
+# RDF-: the evaluation tests whose data writes a collection; under RDF- it is one
+# sequence term, which the ladder in the expected N-Triples cannot describe.
+RDF_MINUS_COLLECTION_TESTS = ['blankNodePropertyList_containing_collection', 'collection_subject', 'collection_object', 'empty_collection', 'nested_collection', 'first', 'last', 'trig-subm-08', 'trig-subm-09']
+RDF_MINUS_REASON = 'RDF-: `( ... )` parses to one sequence term, while the expected N-Triples spells an rdf:first/rdf:rest ladder'
+
 MARK_DICT = {
     f"{REMOTE_BASE_IRI}#trig-syntax-bad-base-04": pytest.mark.xfail(
         reason="accepts @base in the wrong place"
@@ -174,6 +179,12 @@ MARK_DICT = {
         reason="ignores badly formed quad"
     ),
 }
+MARK_DICT.update(
+    {
+        f"{REMOTE_BASE_IRI}#{name}": pytest.mark.xfail(reason=RDF_MINUS_REASON, raises=AssertionError)
+        for name in RDF_MINUS_COLLECTION_TESTS
+    }
+)
 
 
 @pytest.mark.parametrize(

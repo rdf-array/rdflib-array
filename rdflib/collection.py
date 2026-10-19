@@ -4,7 +4,7 @@ from collections.abc import Iterable, Iterator
 from typing import TYPE_CHECKING, Optional
 
 from rdflib.namespace import RDF
-from rdflib.term import BNode, Node
+from rdflib.term import BNode, Node, Sequence
 
 if TYPE_CHECKING:
     from rdflib.graph import Graph
@@ -89,6 +89,8 @@ class Collection:
 
         ```
         """
+        if isinstance(self.uri, Sequence):  # RDF-: the sequence term writes itself
+            return self.uri.n3()
         return "( %s )" % (" ".join([i.n3() for i in self]))
 
     def _get_container(self, index: int) -> Optional[Node]:
@@ -112,6 +114,8 @@ class Collection:
         """
         Returns the 0-based numerical index of the item in the list
         """
+        if isinstance(self.uri, Sequence):  # RDF-
+            return self.uri.elements.index(item)
         listname = self.uri
         index = 0
         while True:
@@ -130,6 +134,8 @@ class Collection:
 
     def __getitem__(self, key: int) -> Node:
         """TODO"""
+        if isinstance(self.uri, Sequence):  # RDF-
+            return self.uri[key]
         c = self._get_container(key)
         if c:
             v = self.graph.value(c, RDF.first)
@@ -142,6 +148,8 @@ class Collection:
 
     def __setitem__(self, key: int, value: Node) -> None:
         """TODO"""
+        if isinstance(self.uri, Sequence):  # RDF-: a sequence term is immutable; build a new one
+            raise TypeError("a Sequence term cannot be changed in place")
         c = self._get_container(key)
         if c:
             self.graph.set((c, RDF.first, value))
@@ -193,6 +201,8 @@ class Collection:
 
         ```
         """
+        if isinstance(self.uri, Sequence):  # RDF-: a sequence term is immutable; build a new one
+            raise TypeError("a Sequence term cannot be changed in place")
         self[key]  # to raise any potential key exceptions
         graph = self.graph
         current = self._get_container(key)
@@ -241,6 +251,8 @@ class Collection:
 
         ```
         """
+        if isinstance(self.uri, Sequence):  # RDF-: a sequence term is immutable; build a new one
+            raise TypeError("a Sequence term cannot be changed in place")
         end = self._end()
         if end == RDF.nil:
             raise ValueError("Cannot append to empty list")
@@ -256,6 +268,8 @@ class Collection:
         return self
 
     def __iadd__(self, other: Iterable[Node]):
+        if isinstance(self.uri, Sequence):  # RDF-: a sequence term is immutable; build a new one
+            raise TypeError("a Sequence term cannot be changed in place")
         end = self._end()
         if end == RDF.nil:
             raise ValueError("Cannot append to empty list")
@@ -273,6 +287,8 @@ class Collection:
         return self
 
     def clear(self):
+        if isinstance(self.uri, Sequence):  # RDF-: a sequence term is immutable; build a new one
+            raise TypeError("a Sequence term cannot be changed in place")
         container: Optional[Node] = self.uri
         graph = self.graph
         while container:

@@ -36,6 +36,7 @@ __all__ = [
     "BNode",
     "Literal",
     "Variable",
+    "Sequence",
 ]
 import logging
 import math
@@ -44,7 +45,7 @@ import xml.dom.minidom
 from base64 import b64decode, b64encode
 from binascii import hexlify, unhexlify
 from collections import defaultdict
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Iterable
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from re import compile, sub
@@ -1237,7 +1238,7 @@ class Literal(Identifier):
             return False  # they are the same
 
         elif isinstance(other, Node):
-            return True  # Literal are the greatest!
+            return _ORDERING[Literal] > _ORDERING[type(other)]  # greater than all but (RDF-) a Sequence
         else:
             return NotImplemented  # we can only compare to nodes
 
@@ -1250,7 +1251,7 @@ class Literal(Identifier):
             except TypeError:
                 return NotImplemented
         if isinstance(other, Node):
-            return False  # all nodes are less-than Literals
+            return _ORDERING[Literal] < _ORDERING[type(other)]  # less than nothing but (RDF-) a Sequence
 
         return NotImplemented
 
@@ -2368,12 +2369,89 @@ class Variable(Identifier):
         return (Variable, (str(self),))
 
 
+class Sequence(Identifier):
+    """RDF-: an ordered sequence of terms that is itself a term.
+
+    ``(1 2)`` in Turtle is one term holding the two literals, not a ladder of
+    rdf:first/rdf:rest blank nodes, and ``()`` is the empty sequence, not
+    rdf:nil. Sequences nest and may be subjects or objects.
+
+    Like every Identifier a Sequence is also a str: its string is the
+    N-Triples form of its elements, ``(e1 e2)``, so two sequences compare
+    and hash equal exactly when their elements do, in order. Element access
+    (``len``, iteration, indexing, ``in``) is by the sequence's elements,
+    not its characters.
+
+    ```python
+    >>> s = Sequence([Literal(1), URIRef("http://example.org/x")])
+    >>> len(s), s == Sequence([Literal(1), URIRef("http://example.org/x")])
+    (2, True)
+    >>> s[1]
+    rdflib.term.URIRef('http://example.org/x')
+    >>> s.n3()
+    '("1"^^<http://www.w3.org/2001/XMLSchema#integer> <http://example.org/x>)'
+    >>> Sequence() == Sequence(()), len(Sequence())
+    (True, 0)
+
+    ```
+    """
+
+    __slots__ = ("_elements",)
+
+    _elements: tuple[Node, ...]
+
+    def __new__(cls, elements: Iterable[Node] = ()):
+        elems = tuple(elements)
+        for e in elems:
+            if not isinstance(e, Node):
+                raise TypeError(f"Sequence element {e!r} is not an rdflib term")
+        inst = str.__new__(cls, "(" + " ".join(e.n3() for e in elems) + ")")
+        inst._elements = elems
+        return inst
+
+    @property
+    def elements(self) -> tuple[Node, ...]:
+        """The elements, in order."""
+        return self._elements
+
+    def __len__(self) -> int:
+        return len(self._elements)
+
+    def __iter__(self):
+        return iter(self._elements)
+
+    def __getitem__(self, index):
+        return self._elements[index]
+
+    def __contains__(self, item: Any) -> bool:
+        return item in self._elements
+
+    def __repr__(self) -> str:
+        if self.__class__ is Sequence:
+            clsName = "rdflib.term.Sequence"  # noqa: N806
+        else:
+            clsName = self.__class__.__name__  # noqa: N806
+        return f"{clsName}({self._elements!r})"
+
+    def toPython(self) -> tuple:  # noqa: N802
+        return tuple(e.toPython() for e in self._elements)
+
+    def n3(self, namespace_manager: Optional[NamespaceManager] = None) -> str:
+        return "(" + " ".join(e.n3(namespace_manager) for e in self._elements) + ")"
+
+    def __reduce__(self) -> tuple[type[Sequence], tuple[tuple[Node, ...]]]:
+        return (Sequence, (self._elements,))
+
+    def __getnewargs__(self) -> tuple[tuple[Node, ...]]:
+        return (self._elements,)
+
+
 # Nodes are ordered like this
 # See http://www.w3.org/TR/sparql11-query/#modOrderBy
 # we leave "space" for more subclasses of Node elsewhere
 # default-dict to grazefully fail for new subclasses
 _ORDERING: dict[type[Node], int] = defaultdict(int)
-_ORDERING.update({BNode: 10, Variable: 20, URIRef: 30, Literal: 40})
+_ORDERING.update({BNode: 10, Variable: 20, URIRef: 30, Literal: 40, Sequence: 50})  # RDF-: sequences last
 
 
 def _isEqualXMLNode(  # noqa: N802

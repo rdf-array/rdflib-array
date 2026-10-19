@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 from contextlib import ExitStack
+import math
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional, Union
 
@@ -24,15 +25,17 @@ logger = logging.getLogger(__name__)
 
 def test_chunk_by_triples(tmp_path: Path):
     g = cached_graph((TEST_DATA_DIR / "suites/w3c/trig/manifest.ttl",))
-    # this graph has 2,848 triples
+    # this graph had 2,848 triples in RDF 1.1; under RDF- its `( ... )` lists are single
+    # sequence terms, so it has fewer
+    assert len(g) < 2848
 
     # serialize into chunks file with 100 triples each
     serialize_in_chunks(
         g, max_triples=100, file_name_stem="chunk_100", output_dir=tmp_path
     )
 
-    # count the resultant .nt files, should be math.ceil(2848 / 100) = 25
-    assert len(list(tmp_path.glob("*.nt"))) == 25
+    # count the resultant .nt files, should be math.ceil(len(g) / 100)
+    assert len(list(tmp_path.glob("*.nt"))) == math.ceil(len(g) / 100)
 
     # check, when a graph is made from the chunk files, it's isomorphic with original
     g2 = Graph()

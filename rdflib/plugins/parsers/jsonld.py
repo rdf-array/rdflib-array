@@ -43,6 +43,7 @@ from rdflib.graph import Dataset, Graph
 from rdflib.namespace import RDF, XSD
 from rdflib.parser import InputSource, URLInputSource
 from rdflib.term import BNode, IdentifiedNode, Literal, Node, URIRef
+from rdflib.term import Node, Sequence
 
 from ..shared.jsonld.context import UNDEF, Context, Term
 from ..shared.jsonld.keys import (
@@ -596,7 +597,7 @@ class Parser:
                     # type error: Return value expected
                     return  # type: ignore[return-value]
                 listref = self._add_list(dataset, graph, context, term, node_list)
-                if listref:
+                if listref is not None:  # RDF-: the empty sequence is a term too (and falsy)
                     return listref
 
         else:  # expand compacted value
@@ -681,41 +682,20 @@ class Parser:
         context: Context,
         term: Optional[Term],
         node_list: Any,
-    ) -> IdentifiedNode:
+    ) -> Node:
+        # RDF-: a JSON-LD list is one sequence term; there are no rdf:first/rdf:rest
+        # triples to add, and an empty list is the empty sequence, not rdf:nil
         if not isinstance(node_list, list):
             node_list = [node_list]
 
-        first_subj: Union[URIRef, BNode] = BNode()
-        if self.skolemize and isinstance(first_subj, BNode):
-            first_subj = first_subj.skolemize()
-
-        rest: Union[URIRef, BNode, None]
-        subj, rest = first_subj, None
-
+        elements: list[Node] = []
         for node in node_list:
             if node is None:
                 continue
-
-            if rest:
-                # type error: Statement is unreachable
-                graph.add((subj, RDF.rest, rest))
-                subj = rest
-
             obj = self._to_object(dataset, graph, context, term, node, inlist=True)
-
-            if obj is None:
-                continue
-
-            graph.add((subj, RDF.first, obj))
-            rest = BNode()
-            if self.skolemize and isinstance(rest, BNode):
-                rest = rest.skolemize()
-
-        if rest:
-            graph.add((subj, RDF.rest, RDF.nil))
-            return first_subj
-        else:
-            return RDF.nil
+            if obj is not None:
+                elements.append(obj)
+        return Sequence(elements)
 
     @staticmethod
     def _to_typed_json_value(value: Any) -> dict[str, str]:

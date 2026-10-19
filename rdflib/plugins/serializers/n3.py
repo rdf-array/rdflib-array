@@ -7,10 +7,20 @@ import warnings
 from rdflib.graph import Graph
 from rdflib.namespace import OWL, Namespace
 from rdflib.plugins.serializers.turtle import OBJECT, SUBJECT, TurtleSerializer
+from rdflib.term import Sequence
 
 __all__ = ["N3Serializer"]
 
 SWAP_LOG = Namespace("http://www.w3.org/2000/10/swap/log#")
+
+
+def _formulae_in(node):
+    """The formulae a term is or (RDF-: inside a sequence term) holds."""
+    if isinstance(node, Graph):
+        yield node
+    elif isinstance(node, Sequence):
+        for e in node.elements:
+            yield from _formulae_in(e)
 
 
 class N3Serializer(TurtleSerializer):
@@ -39,15 +49,10 @@ class N3Serializer(TurtleSerializer):
 
     def preprocessTriple(self, triple):  # noqa: N802
         super(N3Serializer, self).preprocessTriple(triple)
-        if isinstance(triple[0], Graph):
-            for t in triple[0]:
-                self.preprocessTriple(t)
-        if isinstance(triple[1], Graph):
-            for t in triple[1]:
-                self.preprocessTriple(t)
-        if isinstance(triple[2], Graph):
-            for t in triple[2]:
-                self.preprocessTriple(t)
+        for node in triple:
+            for formula in _formulae_in(node):
+                for t in formula:
+                    self.preprocessTriple(t)
 
     def get_pname(self, uri, gen_prefix=True):
         qname = None

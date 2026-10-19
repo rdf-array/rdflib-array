@@ -115,6 +115,7 @@ from typing import (
 
 from rdflib.graph import ConjunctiveGraph, Graph, ReadOnlyGraphAggregate, _TripleType
 from rdflib.term import BNode, IdentifiedNode, Node, URIRef
+from rdflib.term import Sequence
 
 if TYPE_CHECKING:
     from _hashlib import HASH
@@ -293,9 +294,69 @@ class Color:
 _HashT = Callable[[], "HASH"]
 
 
+def _bnodes_in(term: Node, path: str = "") -> Iterator[tuple[BNode, str]]:
+    """RDF-: the blank nodes a term holds -- itself, or the elements of a sequence --
+    each with the index path that leads to it ("" for the term itself)."""
+    if isinstance(term, BNode):
+        yield term, path
+    elif isinstance(term, Sequence):
+        for i, e in enumerate(term.elements):
+            yield from _bnodes_in(e, f"{path}-{i}")
+
+
+_BNODE_PLACEHOLDER = URIRef("urn:x-rdf-array:bnode")
+
+
+def _placeholder_bnodes(term: Node) -> Node:
+    """RDF-: a sequence term with its blank nodes replaced by one placeholder IRI, so that
+    its colour does not depend on their labels."""
+    if isinstance(term, BNode):
+        return _BNODE_PLACEHOLDER
+    if isinstance(term, Sequence):
+        return Sequence(_placeholder_bnodes(e) for e in term.elements)
+    return term
+
+
+def _expand_sequences(graph: Graph) -> Graph:
+    """RDF-: the graph as coloured: a sequence term holding blank nodes is replaced by
+    one with placeholders, plus a pseudo-triple per blank node inside it tying the node
+    to the triple's other end with a predicate that encodes the predicate and the node's
+    position in the sequence.  Colouring over this view tells the blank nodes inside
+    sequences apart the way it tells those in blank node property lists apart."""
+    expanded = Graph()
+    for s, p, o in graph:
+        expanded.add((
+            _placeholder_bnodes(s) if isinstance(s, Sequence) else s,
+            p,
+            _placeholder_bnodes(o) if isinstance(o, Sequence) else o,
+        ))
+        if isinstance(o, Sequence):
+            for b, path in _bnodes_in(o):
+                expanded.add((s, URIRef(f"{p}#rdf-array-object{path}"), b))
+        if isinstance(s, Sequence):
+            for b, path in _bnodes_in(s):
+                expanded.add((b, URIRef(f"{p}#rdf-array-subject{path}"), o))
+    return expanded
+
+
+def _relabel(term: Node, labels: dict[Node, str]) -> Node:
+    """RDF-: a term with its blank nodes, inside sequences too, given canonical labels."""
+    if isinstance(term, BNode):
+        return BNode(value="cb%s" % labels[term])
+    if isinstance(term, Sequence):
+        return Sequence(_relabel(e, labels) for e in term.elements)
+    return term
+
+
 class _TripleCanonicalizer:
     def __init__(self, graph: Graph, hashfunc: _HashT = sha256):
-        self.graph = graph
+        self._source = graph
+        # RDF-: colour over the view that exposes blank nodes inside sequences
+        self.graph = (
+            _expand_sequences(graph)
+            if any(isinstance(t, Sequence) for triple in graph for t in triple)
+            else graph
+        )
 
         def _hashfunc(s: str):
             h = hashfunc()
@@ -499,7 +560,7 @@ class _TripleCanonicalizer:
             start_coloring = datetime.now()
         coloring = self._initial_color()
         if stats is not None:
-            stats["triple_count"] = len(self.graph)
+            stats["triple_count"] = len(self._source)
             stats["adjacent_nodes"] = max(0, len(coloring) - 1)
         coloring = self._refine(coloring, coloring[:])
         if stats is not None:
@@ -526,7 +587,7 @@ class _TripleCanonicalizer:
             stats["canonicalize_triples_runtime"] = _total_seconds(
                 datetime.now() - start_coloring
             )
-        for triple in self.graph:
+        for triple in self._source:
             result = tuple(self._canonicalize_bnodes(triple, bnode_labels))
             yield result
 
@@ -536,10 +597,7 @@ class _TripleCanonicalizer:
         labels: dict[Node, str],
     ):
         for term in triple:
-            if isinstance(term, BNode):
-                yield BNode(value="cb%s" % labels[term])
-            else:
-                yield term
+            yield _relabel(term, labels)
 
 
 def to_isomorphic(graph: Graph) -> IsomorphicGraph:
@@ -638,5 +696,13 @@ def _squash_graph(graph: Graph):
     return (_squash_bnodes(triple) for triple in graph)
 
 
+def _squash_term(t):
+    if isinstance(t, BNode):
+        return _MOCK_BNODE
+    if isinstance(t, Sequence):  # RDF-: the blank nodes inside a sequence too
+        return Sequence(_squash_term(e) for e in t.elements)
+    return t
+
+
 def _squash_bnodes(triple):
-    return tuple((isinstance(t, BNode) and _MOCK_BNODE) or t for t in triple)
+    return tuple(_squash_term(t) for t in triple)

@@ -352,7 +352,7 @@ Just an image
 
 from rdflib.namespace import RDF
 from rdflib.paths import Path
-from rdflib.term import BNode, Node, URIRef
+from rdflib.term import BNode, Node, Sequence, URIRef
 
 __all__ = ["Resource"]
 
@@ -477,7 +477,8 @@ class Resource:
             yield self._cast(node)
 
     def _cast(self, node):
-        if isinstance(node, (BNode, URIRef)):
+        # RDF-: a sequence term is wrapped too, so .items() iterates its elements
+        if isinstance(node, (BNode, URIRef, Sequence)):
             return self._new(node)
         else:
             return node

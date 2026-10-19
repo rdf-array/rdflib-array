@@ -1,6 +1,7 @@
 from textwrap import dedent
 
 from rdflib import RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
+from rdflib.term import Sequence
 from rdflib.collection import Collection
 from rdflib.compare import isomorphic
 from rdflib.plugins.serializers.turtle import TurtleSerializer
@@ -59,6 +60,9 @@ def test_unicode_escaping():
 
 
 def test_turtle_valid_list():
+    """RDF-: `( ... )` parses to a sequence term, which the serializer writes back as a
+    collection (isValidList is only for legacy rdf:first/rdf:rest ladders, which are
+    written as the blank node property lists they are)."""
     ns = Namespace("http://example.org/ns/")
     g = Graph()
     g.parse(
@@ -71,10 +75,11 @@ def test_turtle_valid_list():
         format="turtle",
     )
 
-    turtle_serializer = TurtleSerializer(g)
-
     for o in g.objects(ns.s, ns.p):
-        assert turtle_serializer.isValidList(o)
+        assert isinstance(o, Sequence)
+    output = g.serialize(format="turtle")
+    for written in ('("")', "(0)", "(false)"):
+        assert written in output
 
 
 def test_turtle_shared_list_tail_round_trips():
