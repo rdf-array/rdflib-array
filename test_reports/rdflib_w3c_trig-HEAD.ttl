@@ -315,7 +315,7 @@
     earl:assertedBy <https://github.com/RDFLib/rdflib> ;
     earl:mode earl:automatic ;
     earl:result [ a earl:TestResult ;
-            earl:outcome earl:failed ] ;
+            earl:outcome earl:passed ] ;
     earl:subject <https://github.com/RDFLib/rdflib> ;
     earl:test <http://www.w3.org/2013/TriGTests/#blankNodePropertyList_containing_collection> .
 
@@ -331,7 +331,7 @@
     earl:assertedBy <https://github.com/RDFLib/rdflib> ;
     earl:mode earl:automatic ;
     earl:result [ a earl:TestResult ;
-            earl:outcome earl:failed ] ;
+            earl:outcome earl:passed ] ;
     earl:subject <https://github.com/RDFLib/rdflib> ;
     earl:test <http://www.w3.org/2013/TriGTests/#collection_object> .
 
@@ -339,7 +339,7 @@
     earl:assertedBy <https://github.com/RDFLib/rdflib> ;
     earl:mode earl:automatic ;
     earl:result [ a earl:TestResult ;
-            earl:outcome earl:failed ] ;
+            earl:outcome earl:passed ] ;
     earl:subject <https://github.com/RDFLib/rdflib> ;
     earl:test <http://www.w3.org/2013/TriGTests/#collection_subject> .
 
@@ -379,7 +379,7 @@
     earl:assertedBy <https://github.com/RDFLib/rdflib> ;
     earl:mode earl:automatic ;
     earl:result [ a earl:TestResult ;
-            earl:outcome earl:failed ] ;
+            earl:outcome earl:passed ] ;
     earl:subject <https://github.com/RDFLib/rdflib> ;
     earl:test <http://www.w3.org/2013/TriGTests/#empty_collection> .
 
@@ -387,7 +387,7 @@
     earl:assertedBy <https://github.com/RDFLib/rdflib> ;
     earl:mode earl:automatic ;
     earl:result [ a earl:TestResult ;
-            earl:outcome earl:failed ] ;
+            earl:outcome earl:passed ] ;
     earl:subject <https://github.com/RDFLib/rdflib> ;
     earl:test <http://www.w3.org/2013/TriGTests/#first> .
 
@@ -483,7 +483,7 @@
     earl:assertedBy <https://github.com/RDFLib/rdflib> ;
     earl:mode earl:automatic ;
     earl:result [ a earl:TestResult ;
-            earl:outcome earl:failed ] ;
+            earl:outcome earl:passed ] ;
     earl:subject <https://github.com/RDFLib/rdflib> ;
     earl:test <http://www.w3.org/2013/TriGTests/#last> .
 
@@ -683,7 +683,7 @@
     earl:assertedBy <https://github.com/RDFLib/rdflib> ;
     earl:mode earl:automatic ;
     earl:result [ a earl:TestResult ;
-            earl:outcome earl:failed ] ;
+            earl:outcome earl:passed ] ;
     earl:subject <https://github.com/RDFLib/rdflib> ;
     earl:test <http://www.w3.org/2013/TriGTests/#nested_collection> .
 
@@ -1147,7 +1147,7 @@
     earl:assertedBy <https://github.com/RDFLib/rdflib> ;
     earl:mode earl:automatic ;
     earl:result [ a earl:TestResult ;
-            earl:outcome earl:failed ] ;
+            earl:outcome earl:passed ] ;
     earl:subject <https://github.com/RDFLib/rdflib> ;
     earl:test <http://www.w3.org/2013/TriGTests/#trig-subm-08> .
 
@@ -1155,7 +1155,7 @@
     earl:assertedBy <https://github.com/RDFLib/rdflib> ;
     earl:mode earl:automatic ;
     earl:result [ a earl:TestResult ;
-            earl:outcome earl:failed ] ;
+            earl:outcome earl:passed ] ;
     earl:subject <https://github.com/RDFLib/rdflib> ;
     earl:test <http://www.w3.org/2013/TriGTests/#trig-subm-09> .
 
@@ -1475,7 +1475,7 @@
     earl:assertedBy <https://github.com/RDFLib/rdflib> ;
     earl:mode earl:automatic ;
     earl:result [ a earl:TestResult ;
-            earl:outcome earl:passed ] ;
+            earl:outcome earl:failed ] ;
     earl:subject <https://github.com/RDFLib/rdflib> ;
     earl:test <http://www.w3.org/2013/TriGTests/#trig-syntax-bad-ln-dash-start> .
 
