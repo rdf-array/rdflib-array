@@ -477,7 +477,7 @@ class Resource:
             yield self._cast(node)
 
     def _cast(self, node):
-        # RDF-: a sequence term is wrapped too, so .items() iterates its elements
+        # rdf-array: a sequence term is wrapped too, so .items() iterates its elements
         if isinstance(node, (BNode, URIRef, Sequence)):
             return self._new(node)
         else:

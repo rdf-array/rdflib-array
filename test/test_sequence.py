@@ -1,4 +1,4 @@
-"""RDF-: a collection ``( ... )`` is one sequence term, not a ladder of
+"""rdf-array: a collection ``( ... )`` is one sequence term, not a ladder of
 rdf:first/rdf:rest blank nodes, and ``()`` is the empty sequence, not rdf:nil.
 These are the data-model, parser, serializer and SPARQL sides of that."""
 

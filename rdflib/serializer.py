@@ -27,7 +27,7 @@ _StrT = TypeVar("_StrT", bound=str)
 
 
 def refuse_sequence_terms(graph: Graph, syntax: str) -> None:
-    """RDF-: raise for a graph that holds a sequence term, on behalf of a syntax that has
+    """rdf-array: raise for a graph that holds a sequence term, on behalf of a syntax that has
     no form for one (RDF/XML, TriX, HexTuples), rather than write something that would
     read back as a different graph."""
     from rdflib.exceptions import Error
@@ -43,7 +43,7 @@ def refuse_sequence_terms(graph: Graph, syntax: str) -> None:
         for term in (s, o):
             if isinstance(term, Sequence):
                 raise Error(
-                    f"RDF-: {syntax} has no form for a sequence term; the graph holds {term.n3()}"
+                    f"rdf-array: {syntax} has no form for a sequence term; the graph holds {term.n3()}"
                 )
 
 

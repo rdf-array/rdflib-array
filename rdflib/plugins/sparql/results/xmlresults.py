@@ -149,7 +149,7 @@ def parseTerm(element: xml_etree.Element) -> Union[URIRef, Literal, BNode]:
     elif tag == RESULTS_NS_ET + "bnode":
         return BNode(text)
     elif tag == RESULTS_NS_ET + "seq":
-        # RDF-: <seq> with one child element per element (comments skipped)
+        # rdf-array: <seq> with one child element per element (comments skipped)
         return Sequence([parseTerm(child) for child in element if isinstance(child.tag, str)])  # type: ignore[return-value]
     else:
         raise TypeError("unknown binding type %r" % element)
@@ -266,7 +266,7 @@ class SPARQLXMLWriter:
 
     def write_term(self, val: Identifier) -> None:
         if isinstance(val, Sequence):
-            # RDF-: <seq> with one child element per element
+            # rdf-array: <seq> with one child element per element
             self.writer.startElementNS(
                 (SPARQL_XML_NAMESPACE, "seq"), "seq", AttributesNSImpl({}, {})
             )

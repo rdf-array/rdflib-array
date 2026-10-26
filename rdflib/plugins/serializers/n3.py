@@ -15,7 +15,7 @@ SWAP_LOG = Namespace("http://www.w3.org/2000/10/swap/log#")
 
 
 def _formulae_in(node):
-    """The formulae a term is or (RDF-: inside a sequence term) holds."""
+    """The formulae a term is or (rdf-array: inside a sequence term) holds."""
     if isinstance(node, Graph):
         yield node
     elif isinstance(node, Sequence):

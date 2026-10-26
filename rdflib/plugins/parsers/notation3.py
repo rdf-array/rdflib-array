@@ -882,7 +882,7 @@ class SinkParser:
         j = self.prop(argstr, i, r)
         if j >= 0:
             if self.turtle and isinstance(r[0], Sequence):
-                # RDF-: a sequence is a term, but never a predicate
+                # rdf-array: a sequence is a term, but never a predicate
                 self.BadSyntax(argstr, i, "a sequence cannot be a predicate")
             res.append(("->", r[0]))
             return j
@@ -1898,7 +1898,7 @@ class RDFSink:
             return Literal(s, lang=lang)
 
     def newList(self, n: list[Any], f: Optional[Formula]) -> Sequence:
-        # RDF-: a collection is one sequence term; there are no rdf:first/rdf:rest
+        # rdf-array: a collection is one sequence term; there are no rdf:first/rdf:rest
         # statements to make, and () is the empty sequence, not rdf:nil.  The items
         # are as the parser read them (ints, tuples for symbols, ...) until normalised.
         return Sequence(self.normalise(f, e) for e in n)

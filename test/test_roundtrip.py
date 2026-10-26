@@ -203,20 +203,20 @@ XFAILS = {
     ),
 }
 
-# RDF-: these fixtures write collections, which parse to sequence terms; the formats
+# rdf-array: these fixtures write collections, which parse to sequence terms; the formats
 # below have no form for a sequence term (RDF/XML's rdf:parseType="Collection" is a
 # ladder), so a round trip through them cannot hold the graph.
 RDF_MINUS_SEQUENCE_FIXTURES = ['example-misc.n3', 'listTest.n3', 'n3-writer-test-12.n3', 'n3-writer-test-13.n3', 'n3-writer-test-14.n3', 'n3-writer-test-16.n3', 'n3-writer-test-17.n3', 'n3-writer-test-19.n3', 'n3-writer-test-20.n3', 'rdf-test-09.n3', 'rdf-test-18.n3', 'rdf-test-19.n3', 'rdf-test-20.n3']
 XFAILS[("json-ld", "n3-writer-test-14.n3")] = pytest.mark.xfail(
-    reason="RDF-: JSON-LD has no node form for a sequence as a subject"
+    reason="rdf-array: JSON-LD has no node form for a sequence as a subject"
 )
 XFAILS.update(
     {
         (fmt, name): pytest.mark.xfail(reason=reason)
         for fmt, reason in [
-            ("hext", "RDF-: HexTuples has no form for a sequence term"),
-            ("trix", "RDF-: TriX has no element for a sequence term"),
-            ("xml", "RDF-: RDF/XML has no node element for a sequence term"),
+            ("hext", "rdf-array: HexTuples has no form for a sequence term"),
+            ("trix", "rdf-array: TriX has no element for a sequence term"),
+            ("xml", "rdf-array: RDF/XML has no node element for a sequence term"),
         ]
         for name in RDF_MINUS_SEQUENCE_FIXTURES
     }

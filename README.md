@@ -1,9 +1,9 @@
 <img src=".github/rdf-array-logo.png" alt="[RDFLib]" width="96" align="right">
 
-# rdflib-array: RDFLib for RDF-
+# rdflib-array: RDFLib for rdf-array
 
 **RDF-** fork of [RDFLib](https://github.com/RDFLib/rdflib): the data model gets a fifth kind of
-term, the **sequence**, `rdflib.term.Sequence`. In Turtle-, N3-, TriG-, N-Triples- and N-Quads-
+term, the **sequence**, `rdflib.term.Sequence`. In Turtle-array, N3-array, TriG-array, N-Triples-array and N-Quads-array
 `(1 2 3)` is one term holding its elements in order and `()` is the empty sequence; neither is an
 `rdf:first`/`rdf:rest` ladder or `rdf:nil`, which stay the ordinary triples and IRI they are. A
 JSON-LD `@list` is a sequence, a SPARQL collection `( … )` is a sequence term, and `Graph.items`,
@@ -22,7 +22,7 @@ print(g.serialize(format="turtle"))   # … ns1:s ns1:p (1 (2 3) "x") .
 ```
 
 [docs/rdf-array.md](docs/rdf-array.md) has the details, the W3C and round-trip tests flagged as
-ladder-dependent and what is not done; the sibling forks (PyShEx-array and the ShEx- stack) are
+ladder-dependent and what is not done; the sibling forks (PyShEx-array and the ShEx-array stack) are
 listed in [PyShEx-array](https://github.com/rdf-array/PyShEx-array)'s doc/rdf-array.md.
 
 ---

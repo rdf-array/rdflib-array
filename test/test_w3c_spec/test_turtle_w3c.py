@@ -66,10 +66,10 @@ def check_entry(entry: ManifestEntry) -> None:
         )
 
 
-# RDF-: the evaluation tests whose data writes a collection; under RDF- it is one
+# rdf-array: the evaluation tests whose data writes a collection; under rdf-array it is one
 # sequence term, which the ladder in the expected N-Triples cannot describe.
 RDF_MINUS_COLLECTION_TESTS = ['blankNodePropertyList_containing_collection', 'collection_subject', 'collection_object', 'empty_collection', 'nested_collection', 'first', 'last', 'turtle-subm-08', 'turtle-subm-09']
-RDF_MINUS_REASON = 'RDF-: `( ... )` parses to one sequence term, while the expected N-Triples spells an rdf:first/rdf:rest ladder'
+RDF_MINUS_REASON = 'rdf-array: `( ... )` parses to one sequence term, while the expected N-Triples spells an rdf:first/rdf:rest ladder'
 
 MARK_DICT = {
     f"{REMOTE_BASE_IRI}#turtle-syntax-bad-LITERAL2_with_langtag_and_datatype": pytest.mark.xfail(

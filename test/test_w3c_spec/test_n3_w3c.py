@@ -122,10 +122,10 @@ if os.name == "nt":
 
 for test in turtle_eval_skipped + turtle_positive_syntax_skipped:
     EXPECTED_FAILURES[test] = "Known issue with Turtle parser"
-# RDF-: the evaluation tests whose data writes a collection; under RDF- it is one
+# rdf-array: the evaluation tests whose data writes a collection; under rdf-array it is one
 # sequence term, which the ladder in the expected N-Triples cannot describe.
 for test in ['blankNodePropertyList_containing_collection', 'collection_subject', 'collection_object', 'empty_collection', 'nested_collection', 'first', 'last', 'literal_false', 'turtle-eval-lists-01', 'turtle-eval-lists-02', 'turtle-eval-lists-03', 'turtle-eval-lists-04', 'turtle-eval-lists-05', 'turtle-subm-08', 'turtle-subm-09', 'turtle-subm-11', 'turtle-subm-18', 'turtle-subm-22']:
-    EXPECTED_FAILURES[test] = 'RDF-: `( ... )` parses to one sequence term, while the expected N-Triples spells an rdf:first/rdf:rest ladder'
+    EXPECTED_FAILURES[test] = 'rdf-array: `( ... )` parses to one sequence term, while the expected N-Triples spells an rdf:first/rdf:rest ladder'
 
 
 @pytest.mark.parametrize(

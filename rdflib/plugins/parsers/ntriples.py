@@ -304,7 +304,7 @@ class W3CNTriplesParser:
     def sequence(
         self, bnode_context: Optional[_BNodeContextType] = None
     ) -> Union[te.Literal[False], Sequence]:
-        """RDF-: ``( e1 e2 )`` is one sequence term; ``()`` is the empty sequence."""
+        """rdf-array: ``( e1 e2 )`` is one sequence term; ``()`` is the empty sequence."""
         if not self.peek("("):
             return False
         self.eat(r_lparen)

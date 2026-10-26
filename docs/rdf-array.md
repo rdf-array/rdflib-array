@@ -1,6 +1,6 @@
-# rdflib-array: RDFLib for RDF- (sequences as terms)
+# rdflib-array: RDFLib for rdf-array (sequences as terms)
 
-RDF- is RDF whose data model has a fifth kind of term, the **sequence**: `(1 2 3)` in Turtle-
+rdf-array is RDF whose data model has a fifth kind of term, the **sequence**: `(1 2 3)` in Turtle-array
 is one term holding its elements in order, not a ladder of `rdf:first`/`rdf:rest` blank nodes,
 and `()` is the empty sequence, not `rdf:nil`. Triples that spell out `rdf:first`/`rdf:rest`
 stay ordinary triples and `rdf:nil` an ordinary IRI; they are just no longer what `( … )` means.
@@ -35,7 +35,7 @@ to sort terms it comes after literals.
 |---|---|---|
 | Turtle, TriG, N3 (`plugins/parsers/notation3.py`, `plugins/serializers/turtle.py`, `n3.py`) | `( … )` is one `Sequence`, `()` the empty one; `rdf:nil` and explicit `rdf:first`/`rdf:rest` triples are read as written | `( … )` with the elements inline: a blank node referred to only from the sequence is written as its `[ … ]` property list, a formula as `{ … }`, and the elements' prefixes are declared; an explicit ladder is written as the blank node property lists it is, never as `( )`, and `rdf:nil` as `rdf:nil` |
 | long Turtle (`longturtle.py`) | as Turtle | as Turtle, one element per line |
-| N-Triples, N-Quads (`plugins/parsers/ntriples.py`) | `( … )` of N-Triples terms, nested, as subject or object: an RDF- extension of the grammar | the term's N-Triples form |
+| N-Triples, N-Quads (`plugins/parsers/ntriples.py`) | `( … )` of N-Triples terms, nested, as subject or object: an rdf-array extension of the grammar | the term's N-Triples form |
 | JSON-LD (`plugins/parsers/jsonld.py`, `plugins/serializers/jsonld.py`) | `@list` is a `Sequence` (nested lists nest; an empty `@list` is `()`) | a `Sequence` object is an `@list`; a ladder is ordinary nodes |
 | SPARQL (`plugins/sparql/parser.py`) | `( … )` in a triple pattern or a `CONSTRUCT` template is one sequence term, `()` the empty one; variables inside it bind to a data sequence's elements (`evaluate.py`), and `ORDER BY` sorts sequences after literals (`evalutils.py`) | – |
 | SPARQL results (`plugins/sparql/results/`) | a sequence binding is `{"type":"seq","value":[…]}` in JSON, `<seq>` in XML, a `( … )` cell in CSV and the Turtle term in TSV, read and written | – |
@@ -62,7 +62,7 @@ to sort terms it comes after literals.
 
 New: `test/test_sequence.py` (22 tests: the term, parsing in Turtle/TriG/N3/N-Triples/N-Quads,
 untouched legacy ladders, round trips, SPARQL, `items` and `Collection`). The W3C and other
-suites run with these entries flagged, each with an RDF- reason in the test file:
+suites run with these entries flagged, each with an rdf-array reason in the test file:
 
 - W3C Turtle and TriG evaluation tests whose data writes a collection, where the expected
   N-Triples spells a ladder (`RDF_MINUS_COLLECTION_TESTS` in `test/test_w3c_spec/test_turtle_w3c.py`
@@ -107,7 +107,7 @@ now read and write a sequence (`{"type":"seq"}`, `<seq>`, the CSV `( … )` cell
 SPARQL 1.0 `basic/list-3` and `list-4` pass as a result, and
 `test_sequence.py::test_collection_with_property_list_elements` now expects the match.
 
-Unrelated to RDF-: `test/test_misc/test_plugins.py` installs a test plugin with `pip`, which a
+Unrelated to rdf-array: `test/test_misc/test_plugins.py` installs a test plugin with `pip`, which a
 `uv` virtual environment does not have; the two tests fail in such an environment.
 
 Run the suite with `pytest -m "not webtest and not testcontainer"` (the rest needs the network or
@@ -124,4 +124,4 @@ Docker). The W3C report files in `test_reports/` were not regenerated.
   the term's string form should hold it).
 - `rdflib.collection.Collection` cannot edit a sequence in place.
 - `rdflib.extras.infixowl` still builds `owl:unionOf`, `owl:intersectionOf` and `owl:oneOf` lists
-  as ladders through `Collection`; under RDF- they would be sequence terms.
+  as ladders through `Collection`; under rdf-array they would be sequence terms.

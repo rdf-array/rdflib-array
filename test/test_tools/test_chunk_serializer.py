@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 def test_chunk_by_triples(tmp_path: Path):
     g = cached_graph((TEST_DATA_DIR / "suites/w3c/trig/manifest.ttl",))
-    # this graph had 2,848 triples in RDF 1.1; under RDF- its `( ... )` lists are single
+    # this graph had 2,848 triples in RDF 1.1; under rdf-array its `( ... )` lists are single
     # sequence terms, so it has fewer
     assert len(g) < 2848
 

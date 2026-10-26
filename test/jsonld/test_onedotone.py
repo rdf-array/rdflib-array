@@ -24,9 +24,9 @@ unsupported_tests += (
 )
 unsupported_tests += ("flatten", "compact", "expand")
 unsupported_tests += ("fromRdf",)  # The JSON-LD 1.1 enhancement applies to parsing only
-# RDF-: a JSON-LD @list is one sequence term, and a graph's rdf:first/rdf:rest ladder
+# rdf-array: a JSON-LD @list is one sequence term, and a graph's rdf:first/rdf:rest ladder
 # is not a list: these cases' fixtures spell lists as ladders (or an empty list as
-# rdf:nil) on the RDF side, so they cannot agree with an RDF- reading.
+# rdf:nil) on the RDF side, so they cannot agree with an rdf-array reading.
 unsupported_tests += (
     "toRdf/0013-in", "toRdf/0014-in", "toRdf/0015-in", "toRdf/0025-in", "toRdf/0036-in",
     "toRdf/di03-in", "toRdf/e015-in", "toRdf/e016-in", "toRdf/e023-in", "toRdf/e027-in",

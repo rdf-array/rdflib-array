@@ -61,7 +61,7 @@ def parse_shacl_path(
             )
         path = path_identifier
 
-    # Handle Sequence Paths: a sequence term (RDF-), or a legacy rdf:first/rdf:rest ladder
+    # Handle Sequence Paths: a sequence term (rdf-array), or a legacy rdf:first/rdf:rest ladder
     elif isinstance(path_identifier, Sequence) or shapes_graph.value(path_identifier, RDF.first) is not None:
         sequence = list(shapes_graph.items(path_identifier))
         if len(sequence) < 2:
@@ -145,7 +145,7 @@ def _build_path_component(
             raise SHACLPathError(
                 "A list of SHACL Sequence Paths must contain at least two path items."
             )
-        # RDF-: the list is one sequence term, which is the path component itself
+        # rdf-array: the list is one sequence term, which is the path component itself
         return Sequence(_build_path_component(graph, arg) for arg in path_component.args)
 
     # Handle Inverse Paths
@@ -162,7 +162,7 @@ def _build_path_component(
             raise SHACLPathError(
                 "List of SHACL alternate paths must have at least two path items."
             )
-        # RDF-: the list is one sequence term
+        # rdf-array: the list is one sequence term
         graph.add((bnode, SH.alternativePath,
                    Sequence(_build_path_component(graph, arg) for arg in path_component.args)))
 

@@ -146,7 +146,7 @@ def parseJsonTerm(d: dict[str, str]) -> Identifier:
     elif t == "bnode":
         return BNode(d["value"])
     elif t == "seq":
-        # RDF-: {"type": "seq", "value": [ ...one term object per element... ]}
+        # rdf-array: {"type": "seq", "value": [ ...one term object per element... ]}
         return Sequence([parseJsonTerm(e) for e in d["value"]])  # type: ignore[arg-type]
     else:
         raise NotImplementedError("json term type %r" % t)
@@ -156,7 +156,7 @@ def termToJSON(
     self: JSONResultSerializer, term: Optional[Identifier]
 ) -> Optional[dict[str, str]]:
     if isinstance(term, Sequence):
-        # RDF-: {"type": "seq", "value": [ ...one term object per element... ]}
+        # rdf-array: {"type": "seq", "value": [ ...one term object per element... ]}
         return {"type": "seq", "value": [termToJSON(self, e) for e in term]}  # type: ignore[dict-item]
     if isinstance(term, URIRef):
         return {"type": "uri", "value": str(term)}

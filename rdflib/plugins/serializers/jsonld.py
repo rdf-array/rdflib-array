@@ -276,7 +276,7 @@ class Converter:
             language = o.language
             term = context.find_term(str(p), datatype, language=language)
         else:
-            # RDF-: a sequence term is a list; a legacy rdf:first/rdf:rest ladder is not
+            # rdf-array: a sequence term is a list; a legacy rdf:first/rdf:rest ladder is not
             containers = [LIST, None] if isinstance(o, Sequence) else [None]
             for container in containers:
                 for coercion in (ID, VOCAB, UNDEF):
@@ -419,7 +419,7 @@ class Converter:
                 return v
 
     def to_collection(self, graph: Graph, l_: Identifier):
-        # RDF-: a sequence term is the list itself; a legacy rdf:first/rdf:rest ladder
+        # rdf-array: a sequence term is the list itself; a legacy rdf:first/rdf:rest ladder
         # stays the blank nodes it is written with
         if isinstance(l_, Sequence):
             return list(l_.elements)

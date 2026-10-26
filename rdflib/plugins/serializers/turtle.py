@@ -104,7 +104,7 @@ class RecursiveSerializer(Serializer):
     def preprocessTriple(self, spo: _TripleType) -> None:
         s, p, o = spo
         self._references[o] += 1
-        # RDF-: a blank node inside a sequence term is referenced by it, so its own
+        # rdf-array: a blank node inside a sequence term is referenced by it, so its own
         # statements are written under its label rather than as an anonymous [] subject
         for term in (s, o):
             if isinstance(term, Sequence):
@@ -198,7 +198,7 @@ class RecursiveSerializer(Serializer):
 
 
 def _sequence_leaves(seq: Sequence):
-    """RDF-: the terms a sequence term holds, nested sequences flattened."""
+    """rdf-array: the terms a sequence term holds, nested sequences flattened."""
     for e in seq.elements:
         if isinstance(e, Sequence):
             yield from _sequence_leaves(e)
@@ -207,7 +207,7 @@ def _sequence_leaves(seq: Sequence):
 
 
 def _bnodes_in_sequence(seq: Sequence):
-    """RDF-: the blank nodes a sequence term holds, nested sequences included."""
+    """rdf-array: the blank nodes a sequence term holds, nested sequences included."""
     return (e for e in _sequence_leaves(seq) if isinstance(e, BNode))
 
 
@@ -327,7 +327,7 @@ class TurtleSerializer(RecursiveSerializer):
             if isinstance(node, Literal) and node.datatype:
                 self.get_pname(node.datatype, gen_prefix=_GEN_QNAME_FOR_DT)
             if isinstance(node, Sequence):
-                # RDF-: the terms inside a sequence need their prefixes declared too
+                # rdf-array: the terms inside a sequence need their prefixes declared too
                 for e in _sequence_leaves(node):
                     self.get_pname(e, gen_prefix=False)
                     if isinstance(e, Literal) and e.datatype:
@@ -424,7 +424,7 @@ class TurtleSerializer(RecursiveSerializer):
             raise Error("Cannot serialize node '%s'" % (node,))
 
     def p_sequence(self, node: Node, position: int, newline: bool = False) -> bool:
-        """RDF-: a sequence term is written as the collection ``(e1 e2 …)`` of its
+        """rdf-array: a sequence term is written as the collection ``(e1 e2 …)`` of its
         elements. Each element goes through :meth:`path`, so a blank node that only
         the sequence refers to is written as its ``[ … ]`` property list and, in N3,
         a formula as its ``{ … }``, just as in any other object position."""
@@ -447,10 +447,10 @@ class TurtleSerializer(RecursiveSerializer):
 
     def label(self, node: Node, position: int) -> str:
         if isinstance(node, Sequence):
-            # RDF-: a sequence writes as a collection of its elements (path() normally
+            # rdf-array: a sequence writes as a collection of its elements (path() normally
             # takes a sequence before it gets here; this serves callers that want a string)
             return "(" + " ".join(self.label(e, OBJECT) for e in node.elements) + ")"
-        # (RDF-: rdf:nil is written as the IRI it is; "()" is the empty sequence)
+        # (rdf-array: rdf:nil is written as the IRI it is; "()" is the empty sequence)
         if position is VERB and node in self.keywords:
             return self.keywords[node]
         if isinstance(node, Literal):
@@ -475,7 +475,7 @@ class TurtleSerializer(RecursiveSerializer):
         if not newline:
             self.write(" ")
 
-        # RDF-: `( ... )` is a sequence term, so a legacy rdf:first/rdf:rest ladder is
+        # rdf-array: `( ... )` is a sequence term, so a legacy rdf:first/rdf:rest ladder is
         # written as the blank node property list it is, never as a collection
         self.subjectDone(node)
         self.depth += 2

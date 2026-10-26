@@ -158,7 +158,7 @@ def _fillTemplate(
         if isinstance(x, BNode):
             return bnodeMap[x]
         if isinstance(x, Sequence):
-            # RDF-: a template sequence is filled element by element, and is
+            # rdf-array: a template sequence is filled element by element, and is
             # unbound when one of its elements is
             elements = [fill(e) for e in x.elements]
             return None if None in elements else Sequence(elements)
@@ -185,5 +185,5 @@ def _val(v: _ValueT) -> tuple[int, _ValueT]:
     elif isinstance(v, Literal):
         return (3, v)
     elif isinstance(v, Sequence):
-        # RDF-: after literals, element by element, a shorter prefix first
+        # rdf-array: after literals, element by element, a shorter prefix first
         return (4, tuple(_val(e) for e in v.elements))  # type: ignore[arg-type]

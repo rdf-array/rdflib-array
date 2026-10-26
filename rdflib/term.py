@@ -1238,7 +1238,7 @@ class Literal(Identifier):
             return False  # they are the same
 
         elif isinstance(other, Node):
-            return _ORDERING[Literal] > _ORDERING[type(other)]  # greater than all but (RDF-) a Sequence
+            return _ORDERING[Literal] > _ORDERING[type(other)]  # greater than all but (rdf-array) a Sequence
         else:
             return NotImplemented  # we can only compare to nodes
 
@@ -1251,7 +1251,7 @@ class Literal(Identifier):
             except TypeError:
                 return NotImplemented
         if isinstance(other, Node):
-            return _ORDERING[Literal] < _ORDERING[type(other)]  # less than nothing but (RDF-) a Sequence
+            return _ORDERING[Literal] < _ORDERING[type(other)]  # less than nothing but (rdf-array) a Sequence
 
         return NotImplemented
 
@@ -2370,7 +2370,7 @@ class Variable(Identifier):
 
 
 class Sequence(Identifier):
-    """RDF-: an ordered sequence of terms that is itself a term.
+    """rdf-array: an ordered sequence of terms that is itself a term.
 
     ``(1 2)`` in Turtle is one term holding the two literals, not a ladder of
     rdf:first/rdf:rest blank nodes, and ``()`` is the empty sequence, not
@@ -2451,7 +2451,7 @@ class Sequence(Identifier):
 # we leave "space" for more subclasses of Node elsewhere
 # default-dict to grazefully fail for new subclasses
 _ORDERING: dict[type[Node], int] = defaultdict(int)
-_ORDERING.update({BNode: 10, Variable: 20, URIRef: 30, Literal: 40, Sequence: 50})  # RDF-: sequences last
+_ORDERING.update({BNode: 10, Variable: 20, URIRef: 30, Literal: 40, Sequence: 50})  # rdf-array: sequences last
 
 
 def _isEqualXMLNode(  # noqa: N802

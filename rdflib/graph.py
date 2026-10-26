@@ -1204,7 +1204,7 @@ class Graph(Node):
         Args:
             list: An RDF collection.
         """
-        if isinstance(list, Sequence):  # RDF-: a collection is one sequence term
+        if isinstance(list, Sequence):  # rdf-array: a collection is one sequence term
             yield from list.elements
             return
         chain = set([list])
@@ -2069,7 +2069,7 @@ class Graph(Node):
             subgraph = target_graph
 
         def bnodes_in(o: Node) -> Generator[BNode, None, None]:
-            # RDF-: the blank nodes an object leads to: itself, or the elements of a sequence
+            # rdf-array: the blank nodes an object leads to: itself, or the elements of a sequence
             if type(o) is BNode:
                 yield o
             elif isinstance(o, Sequence):
@@ -2096,7 +2096,7 @@ class Graph(Node):
             for s, p, o in self.triples((uri, None, None)):
                 # Add the triple to the CBD subgraph
                 subgraph.add((s, p, o))
-                # If the object is a blank node, or (RDF-) a sequence holding blank
+                # If the object is a blank node, or (rdf-array) a sequence holding blank
                 # nodes, recursively add their CBDs (Rule 2)
                 for b in bnodes_in(o):
                     if (b, None, None) not in subgraph:
@@ -2112,7 +2112,7 @@ class Graph(Node):
 
         # Start the CBD construction from the given resource
         add_to_cbd(resource)
-        if isinstance(resource, Sequence):  # RDF-: a sequence's description is its blank nodes'
+        if isinstance(resource, Sequence):  # rdf-array: a sequence's description is its blank nodes'
             for b in bnodes_in(resource):
                 if (b, None, None) not in subgraph:
                     add_to_cbd(b)

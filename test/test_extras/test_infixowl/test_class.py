@@ -105,7 +105,7 @@ def test_class_and(graph):
 
 
 @pytest.mark.xfail(
-    reason="RDF-: infixowl builds its OWL lists as rdf:first/rdf:rest ladders through Collection, which the Turtle serializer now writes as the property lists they are, while the expected text spells `( ... )`; giving infixowl sequence terms is not done",
+    reason="rdf-array: infixowl builds its OWL lists as rdf:first/rdf:rest ladders through Collection, which the Turtle serializer now writes as the property lists they are, while the expected text spells `( ... )`; giving infixowl sequence terms is not done",
     strict=True,
 )
 def test_class_getparents(graph):

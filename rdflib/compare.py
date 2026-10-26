@@ -295,7 +295,7 @@ _HashT = Callable[[], "HASH"]
 
 
 def _bnodes_in(term: Node, path: str = "") -> Iterator[tuple[BNode, str]]:
-    """RDF-: the blank nodes a term holds -- itself, or the elements of a sequence --
+    """rdf-array: the blank nodes a term holds -- itself, or the elements of a sequence --
     each with the index path that leads to it ("" for the term itself)."""
     if isinstance(term, BNode):
         yield term, path
@@ -308,7 +308,7 @@ _BNODE_PLACEHOLDER = URIRef("urn:x-rdf-array:bnode")
 
 
 def _placeholder_bnodes(term: Node) -> Node:
-    """RDF-: a sequence term with its blank nodes replaced by one placeholder IRI, so that
+    """rdf-array: a sequence term with its blank nodes replaced by one placeholder IRI, so that
     its colour does not depend on their labels."""
     if isinstance(term, BNode):
         return _BNODE_PLACEHOLDER
@@ -318,7 +318,7 @@ def _placeholder_bnodes(term: Node) -> Node:
 
 
 def _expand_sequences(graph: Graph) -> Graph:
-    """RDF-: the graph as coloured: a sequence term holding blank nodes is replaced by
+    """rdf-array: the graph as coloured: a sequence term holding blank nodes is replaced by
     one with placeholders, plus a pseudo-triple per blank node inside it tying the node
     to the triple's other end with a predicate that encodes the predicate and the node's
     position in the sequence.  Colouring over this view tells the blank nodes inside
@@ -340,7 +340,7 @@ def _expand_sequences(graph: Graph) -> Graph:
 
 
 def _relabel(term: Node, labels: dict[Node, str]) -> Node:
-    """RDF-: a term with its blank nodes, inside sequences too, given canonical labels."""
+    """rdf-array: a term with its blank nodes, inside sequences too, given canonical labels."""
     if isinstance(term, BNode):
         return BNode(value="cb%s" % labels[term])
     if isinstance(term, Sequence):
@@ -351,7 +351,7 @@ def _relabel(term: Node, labels: dict[Node, str]) -> Node:
 class _TripleCanonicalizer:
     def __init__(self, graph: Graph, hashfunc: _HashT = sha256):
         self._source = graph
-        # RDF-: colour over the view that exposes blank nodes inside sequences
+        # rdf-array: colour over the view that exposes blank nodes inside sequences
         self.graph = (
             _expand_sequences(graph)
             if any(isinstance(t, Sequence) for triple in graph for t in triple)
@@ -699,7 +699,7 @@ def _squash_graph(graph: Graph):
 def _squash_term(t):
     if isinstance(t, BNode):
         return _MOCK_BNODE
-    if isinstance(t, Sequence):  # RDF-: the blank nodes inside a sequence too
+    if isinstance(t, Sequence):  # rdf-array: the blank nodes inside a sequence too
         return Sequence(_squash_term(e) for e in t.elements)
     return t
 

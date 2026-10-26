@@ -101,7 +101,7 @@ class CSVResultSerializer(ResultSerializer):
         if term is None:
             return ""
         elif isinstance(term, Sequence):
-            # RDF-: the sequence is one cell, its literals quoted: ("1" http://a.example/o (...))
+            # rdf-array: the sequence is one cell, its literals quoted: ("1" http://a.example/o (...))
             return _csv_sequence(term)
         elif isinstance(term, BNode):
             return f"_:{term}"

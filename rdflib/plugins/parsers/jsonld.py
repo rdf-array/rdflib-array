@@ -597,7 +597,7 @@ class Parser:
                     # type error: Return value expected
                     return  # type: ignore[return-value]
                 listref = self._add_list(dataset, graph, context, term, node_list)
-                if listref is not None:  # RDF-: the empty sequence is a term too (and falsy)
+                if listref is not None:  # rdf-array: the empty sequence is a term too (and falsy)
                     return listref
 
         else:  # expand compacted value
@@ -683,7 +683,7 @@ class Parser:
         term: Optional[Term],
         node_list: Any,
     ) -> Node:
-        # RDF-: a JSON-LD list is one sequence term; there are no rdf:first/rdf:rest
+        # rdf-array: a JSON-LD list is one sequence term; there are no rdf:first/rdf:rest
         # triples to add, and an empty list is the empty sequence, not rdf:nil
         if not isinstance(node_list, list):
             node_list = [node_list]

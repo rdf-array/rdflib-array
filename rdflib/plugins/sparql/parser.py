@@ -71,7 +71,7 @@ def expandTriples(terms: ParseResults) -> list[Any]:
                     continue  # this semicolon is spurious
                 res.append(last_subject)
             elif isinstance(t, list):
-                # BlankNodePropertyList, or (RDF-) a Collection: t[0] is the node, the
+                # BlankNodePropertyList, or (rdf-array) a Collection: t[0] is the node, the
                 # rest its triples -- which for a [ .. ] start with the node itself
                 # is this bnode the object of previous triples?
                 if (len(res) % 3) == 2:
@@ -98,7 +98,7 @@ def expandTriples(terms: ParseResults) -> list[Any]:
                     last_predicate = t
             if DEBUG:
                 print(len(res), t)
-        # RDF-: a collection standing alone, `{ ( 1 2 ) }`, is one term and no
+        # rdf-array: a collection standing alone, `{ ( 1 2 ) }`, is one term and no
         # triples (its cells were triples in RDF 1.1)
         if len(res) % 3 == 1 and _is_sequence(res[-1]):
             res.pop()
@@ -140,7 +140,7 @@ def expandBNodeTriples(terms: ParseResults) -> list[Any]:
 
 
 def _is_sequence(x: Any) -> bool:
-    """RDF-: a sequence term, or one waiting for its prefixed names (expandCollection)"""
+    """rdf-array: a sequence term, or one waiting for its prefixed names (expandCollection)"""
     return isinstance(x, rdflib.term.Sequence) or (
         isinstance(x, CompValue) and x.name == "sequence"
     )
@@ -148,7 +148,7 @@ def _is_sequence(x: Any) -> bool:
 
 def expandCollection(terms: ParseResults) -> list[Any]:
     """
-    RDF-: ( 1 2 3 ) is one sequence term, not rdf:first/rdf:rest triples.
+    rdf-array: ( 1 2 3 ) is one sequence term, not rdf:first/rdf:rest triples.
     The result is the term alone, or [term, *triples] when an element was a
     [ .. ] (or a nested collection) with triples of its own.
     """
@@ -433,7 +433,7 @@ BooleanLiteral = Keyword("true").set_parse_action(
 # [138] BlankNode ::= BLANK_NODE_LABEL | ANON
 BlankNode = BLANK_NODE_LABEL | ANON
 
-# RDF-: as a graph term, () is the empty sequence, not rdf:nil (NIL stays rdf:nil
+# rdf-array: as a graph term, () is the empty sequence, not rdf:nil (NIL stays rdf:nil
 # where it is an empty argument list)
 GraphNil = Literal("(") + ")"
 GraphNil.set_parse_action(lambda x: rdflib.term.Sequence())

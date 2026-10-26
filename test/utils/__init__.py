@@ -97,7 +97,7 @@ class GraphHelper:
             xset = cast(GHNode, cls.triple_or_quad_set(node, bnode_handling))
             return xset
         if isinstance(node, Sequence) and cls._holds_graph(node):
-            # RDF-: a formula inside a sequence term compares by its triple set, as a
+            # rdf-array: a formula inside a sequence term compares by its triple set, as a
             # formula node does; the sequence becomes the tuple of its converted elements
             return cast(GHNode, tuple(cls.node(e, bnode_handling) for e in node.elements))
 
@@ -131,8 +131,8 @@ class GraphHelper:
         """
         for node in nodes:
             if isinstance(node, BNode) or (
-                isinstance(node, Sequence) and cls._contains_bnodes(tuple(node.elements))  # RDF-
-            ) or (isinstance(node, tuple) and cls._contains_bnodes(node)):  # RDF-: converted sequence
+                isinstance(node, Sequence) and cls._contains_bnodes(tuple(node.elements))  # rdf-array
+            ) or (isinstance(node, tuple) and cls._contains_bnodes(node)):  # rdf-array: converted sequence
                 return True
         return False
 
@@ -150,9 +150,9 @@ class GraphHelper:
     def _collapse_node(cls, node: NodeT) -> NodeT:
         if isinstance(node, BNode):
             return cast(NodeT, COLLAPSED_BNODE)
-        if isinstance(node, Sequence):  # RDF-: the blank nodes a sequence holds, too
+        if isinstance(node, Sequence):  # rdf-array: the blank nodes a sequence holds, too
             return cast(NodeT, Sequence(cls._collapse_node(e) for e in node.elements))
-        if isinstance(node, tuple):  # RDF-: a sequence converted by node() because it holds a formula
+        if isinstance(node, tuple):  # rdf-array: a sequence converted by node() because it holds a formula
             return cast(NodeT, tuple(cls._collapse_node(e) for e in node))
         return node
 

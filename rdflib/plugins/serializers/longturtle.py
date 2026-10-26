@@ -171,7 +171,7 @@ class LongTurtleSerializer(RecursiveSerializer):
             if isinstance(node, Literal) and node.datatype:
                 self.get_pname(node.datatype, gen_prefix=_GEN_QNAME_FOR_DT)
             if isinstance(node, Sequence):
-                # RDF-: the terms inside a sequence need their prefixes declared too
+                # rdf-array: the terms inside a sequence need their prefixes declared too
                 for e in _sequence_leaves(node):
                     self.get_pname(e, gen_prefix=False)
                     if isinstance(e, Literal) and e.datatype:
@@ -266,7 +266,7 @@ class LongTurtleSerializer(RecursiveSerializer):
             raise Error("Cannot serialize node '%s'" % (node,))
 
     def p_sequence(self, node, position):
-        # RDF-: a sequence object is written one element per line, as the
+        # rdf-array: a sequence object is written one element per line, as the
         # rdf:first/rdf:rest collections this serializer used to inline were
         if not isinstance(node, Sequence) or position == SUBJECT or len(node) == 0:
             return False
@@ -286,9 +286,9 @@ class LongTurtleSerializer(RecursiveSerializer):
         return True
 
     def label(self, node, position):
-        if isinstance(node, Sequence):  # RDF-: a sequence writes as a collection of its elements
+        if isinstance(node, Sequence):  # rdf-array: a sequence writes as a collection of its elements
             return "(" + " ".join(self.label(e, OBJECT) for e in node.elements) + ")"
-        # (RDF-: rdf:nil is written as the IRI it is; "()" is the empty sequence)
+        # (rdf-array: rdf:nil is written as the IRI it is; "()" is the empty sequence)
         if position is VERB and node in self.keywords:
             return self.keywords[node]
         if isinstance(node, Literal):
@@ -314,7 +314,7 @@ class LongTurtleSerializer(RecursiveSerializer):
         ):
             return False
 
-        # RDF-: `( ... )` is a sequence term, so a legacy rdf:first/rdf:rest ladder is
+        # rdf-array: `( ... )` is a sequence term, so a legacy rdf:first/rdf:rest ladder is
         # written as the blank node property list it is, never as a collection
         self.subjectDone(node)
         self.write("\n" + self.indent(1) + "[\n")

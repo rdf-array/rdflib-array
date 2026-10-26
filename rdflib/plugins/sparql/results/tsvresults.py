@@ -58,7 +58,7 @@ EMPTY = FollowedBy(LineEnd()) | FollowedBy("\t")
 EMPTY.set_parse_action(lambda x: NONE_VALUE)
 
 class _SequenceTokens:
-    """RDF-: the parsed elements of a ( ... ) cell, converted by TSVResultParser.convertTerm"""
+    """rdf-array: the parsed elements of a ( ... ) cell, converted by TSVResultParser.convertTerm"""
 
     def __init__(self, items: list):
         self.items = items

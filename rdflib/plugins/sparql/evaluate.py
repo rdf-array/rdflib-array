@@ -70,7 +70,7 @@ _Triple = tuple[Identifier, Identifier, Identifier]
 
 
 def _groundSequence(ctx: QueryContext, x: Any) -> Any:
-    """RDF-: a sequence pattern with its bound variables substituted, or None
+    """rdf-array: a sequence pattern with its bound variables substituted, or None
     when a variable (or a blank node, a variable in a pattern) is still free"""
     if isinstance(x, Sequence):
         elements = [_groundSequence(ctx, e) for e in x.elements]
@@ -79,7 +79,7 @@ def _groundSequence(ctx: QueryContext, x: Any) -> Any:
 
 
 def _unifySequence(ctx: QueryContext, pattern: Any, term: Any) -> bool:
-    """RDF-: bind the free variables of a sequence pattern to the matching
+    """rdf-array: bind the free variables of a sequence pattern to the matching
     elements of a data term; False when the term does not fit the pattern"""
     if isinstance(pattern, (Variable, BNode)):
         bound = ctx[pattern]
@@ -111,7 +111,7 @@ def evalBGP(
     _p = ctx[p]
     _o = ctx[o]
 
-    # RDF-: a sequence holding variables matches the data's sequences of its
+    # rdf-array: a sequence holding variables matches the data's sequences of its
     # shape, binding the variables to their elements
     open_s = isinstance(s, Sequence) and _groundSequence(ctx, s) is None
     open_o = isinstance(o, Sequence) and _groundSequence(ctx, o) is None

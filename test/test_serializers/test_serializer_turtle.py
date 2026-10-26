@@ -60,7 +60,7 @@ def test_unicode_escaping():
 
 
 def test_turtle_valid_list():
-    """RDF-: `( ... )` parses to a sequence term, which the serializer writes back as a
+    """rdf-array: `( ... )` parses to a sequence term, which the serializer writes back as a
     collection (isValidList is only for legacy rdf:first/rdf:rest ladders, which are
     written as the blank node property lists they are)."""
     ns = Namespace("http://example.org/ns/")

@@ -184,7 +184,7 @@ def translatePName(  # type: ignore[return]
             # type error: Incompatible return value type (got "Union[CompValue, str, None]", expected "Optional[Identifier]")
             return prologue.absolutize(p)  # type: ignore[return-value]
         if p.name == "sequence":
-            # RDF-: the parser's sequence with prefixed names; its elements are resolved by now
+            # rdf-array: the parser's sequence with prefixed names; its elements are resolved by now
             return Sequence(p.elements)
         if p.name == "literal":
             # type error: Argument "datatype" to "Literal" has incompatible type "Union[CompValue, str, None]"; expected "Optional[str]"
@@ -494,7 +494,7 @@ def _aggs(e, A) -> Optional[Variable]:  # type: ignore[return]
 
 # type error: Missing return statement
 def _sequenceVars(x: Sequence) -> set[Variable]:
-    """RDF-: the variables inside a sequence pattern, at any depth"""
+    """rdf-array: the variables inside a sequence pattern, at any depth"""
     res: set[Variable] = set()
     for e in x.elements:
         if isinstance(e, Variable):

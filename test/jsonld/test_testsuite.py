@@ -18,9 +18,9 @@ unsupported_tests += (
 )
 unsupported_tests += ("flatten", "compact", "expand")
 unsupported_tests += ("html",)
-# RDF-: a JSON-LD @list is one sequence term, and a graph's rdf:first/rdf:rest ladder
+# rdf-array: a JSON-LD @list is one sequence term, and a graph's rdf:first/rdf:rest ladder
 # is not a list: these cases' fixtures spell lists as ladders (or an empty list as
-# rdf:nil) on the RDF side, so they cannot agree with an RDF- reading.
+# rdf:nil) on the RDF side, so they cannot agree with an rdf-array reading.
 unsupported_tests += (
     "fromRdf-0004-in", "fromRdf-0005-in", "fromRdf-0006-in", "fromRdf-0009-in", "fromRdf-0011-in",
     "fromRdf-0013-in", "fromRdf-0014-in", "fromRdf-0016-in",
