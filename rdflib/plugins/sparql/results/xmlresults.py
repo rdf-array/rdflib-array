@@ -29,7 +29,7 @@ from xml.sax.saxutils import XMLGenerator
 from xml.sax.xmlreader import AttributesNSImpl
 
 from rdflib.query import Result, ResultException, ResultParser, ResultSerializer
-from rdflib.term import BNode, Identifier, Literal, URIRef, Variable
+from rdflib.term import BNode, Identifier, Literal, Sequence, URIRef, Variable
 
 try:
     # https://adamj.eu/tech/2021/12/29/python-type-hints-optional-imports/
@@ -148,6 +148,9 @@ def parseTerm(element: xml_etree.Element) -> Union[URIRef, Literal, BNode]:
         return URIRef(text)  # type: ignore[arg-type]
     elif tag == RESULTS_NS_ET + "bnode":
         return BNode(text)
+    elif tag == RESULTS_NS_ET + "seq":
+        # RDF-: <seq> with one child element per element (comments skipped)
+        return Sequence([parseTerm(child) for child in element if isinstance(child.tag, str)])  # type: ignore[return-value]
     else:
         raise TypeError("unknown binding type %r" % element)
 
@@ -258,8 +261,19 @@ class SPARQLXMLWriter:
             # type error: Argument 2 to "AttributesNSImpl" has incompatible type "dict[tuple[None, str], str]"; expected "Mapping[tuple[str, str], str]"
             AttributesNSImpl(attr_vals, attr_qnames),  # type: ignore[arg-type, unused-ignore]
         )
+        self.write_term(val)
+        self.writer.endElementNS((SPARQL_XML_NAMESPACE, "binding"), "binding")
 
-        if isinstance(val, URIRef):
+    def write_term(self, val: Identifier) -> None:
+        if isinstance(val, Sequence):
+            # RDF-: <seq> with one child element per element
+            self.writer.startElementNS(
+                (SPARQL_XML_NAMESPACE, "seq"), "seq", AttributesNSImpl({}, {})
+            )
+            for element in val:
+                self.write_term(element)
+            self.writer.endElementNS((SPARQL_XML_NAMESPACE, "seq"), "seq")
+        elif isinstance(val, URIRef):
             self.writer.startElementNS(
                 (SPARQL_XML_NAMESPACE, "uri"), "uri", AttributesNSImpl({}, {})
             )
@@ -293,8 +307,6 @@ class SPARQLXMLWriter:
 
         else:
             raise Exception("Unsupported RDF term: %s" % val)
-
-        self.writer.endElementNS((SPARQL_XML_NAMESPACE, "binding"), "binding")
 
     def close(self) -> None:
         if self._results:

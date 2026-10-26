@@ -1,0 +1,85 @@
+{
+  "@context": [
+    "https://w3c.github.io/json-ld-api/tests/context.jsonld",
+    {
+      "@base": "fromRdf-manifest"
+    }
+  ],
+  "@id": "",
+  "@type": "mf:Manifest",
+  "name": "rdf-array: Transform RDF to JSON-LD (sequences)",
+  "description": "rdf-array to JSON-LD: a sequence term is a @list.",
+  "baseIri": "https://rdf-array.github.io/json-ld-api-contrib/tests/",
+  "sequence": [
+    {
+      "@id": "#tseq01",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:FromRDFTest"
+      ],
+      "name": "seq01",
+      "purpose": "rdf-array: a sequence of literals is a @list",
+      "input": "fromRdf/seq01-in.nq",
+      "expect": "fromRdf/seq01-out.jsonld",
+      "option": {
+        "specVersion": "json-ld-1.1"
+      }
+    },
+    {
+      "@id": "#tseq02",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:FromRDFTest"
+      ],
+      "name": "seq02",
+      "purpose": "rdf-array: the empty sequence is an empty @list",
+      "input": "fromRdf/seq02-in.nq",
+      "expect": "fromRdf/seq02-out.jsonld",
+      "option": {
+        "specVersion": "json-ld-1.1"
+      }
+    },
+    {
+      "@id": "#tseq03",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:FromRDFTest"
+      ],
+      "name": "seq03",
+      "purpose": "rdf-array: nested sequences are nested @lists",
+      "input": "fromRdf/seq03-in.nq",
+      "expect": "fromRdf/seq03-out.jsonld",
+      "option": {
+        "specVersion": "json-ld-1.1"
+      }
+    },
+    {
+      "@id": "#tseq04",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:FromRDFTest"
+      ],
+      "name": "seq04",
+      "purpose": "rdf-array: IRI and blank node elements are node references",
+      "input": "fromRdf/seq04-in.nq",
+      "expect": "fromRdf/seq04-out.jsonld",
+      "option": {
+        "specVersion": "json-ld-1.1"
+      }
+    },
+    {
+      "@id": "#tseq05",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:FromRDFTest"
+      ],
+      "name": "seq05",
+      "purpose": "rdf-array: a sequence in a named graph",
+      "input": "fromRdf/seq05-in.nq",
+      "expect": "fromRdf/seq05-out.jsonld",
+      "option": {
+        "specVersion": "json-ld-1.1"
+      }
+    }
+  ]
+}

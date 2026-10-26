@@ -1,0 +1,197 @@
+{
+  "@context": [
+    "https://w3c.github.io/json-ld-api/tests/context.jsonld",
+    {
+      "@base": "toRdf-manifest"
+    }
+  ],
+  "@id": "",
+  "@type": "mf:Manifest",
+  "name": "rdf-array: Transform JSON-LD to RDF (sequences)",
+  "description": "JSON-LD to rdf-array: a @list is one sequence term.",
+  "baseIri": "https://rdf-array.github.io/json-ld-api-contrib/tests/",
+  "sequence": [
+    {
+      "@id": "#tli01",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:ToRDFTest"
+      ],
+      "name": "li01",
+      "purpose": "rdf-array: a @list of strings is one sequence term",
+      "input": "toRdf/li01-in.jsonld",
+      "expect": "toRdf/li01-out.nq",
+      "option": {
+        "specVersion": "json-ld-1.1"
+      }
+    },
+    {
+      "@id": "#tli02",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:ToRDFTest"
+      ],
+      "name": "li02",
+      "purpose": "rdf-array: an empty @list is the empty sequence, not rdf:nil",
+      "input": "toRdf/li02-in.jsonld",
+      "expect": "toRdf/li02-out.nq",
+      "option": {
+        "specVersion": "json-ld-1.1"
+      }
+    },
+    {
+      "@id": "#tli03",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:ToRDFTest"
+      ],
+      "name": "li03",
+      "purpose": "rdf-array: nested lists are nested sequences",
+      "input": "toRdf/li03-in.jsonld",
+      "expect": "toRdf/li03-out.nq",
+      "option": {
+        "specVersion": "json-ld-1.1"
+      }
+    },
+    {
+      "@id": "#tli04",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:ToRDFTest"
+      ],
+      "name": "li04",
+      "purpose": "rdf-array: empty sequences nested",
+      "input": "toRdf/li04-in.jsonld",
+      "expect": "toRdf/li04-out.nq",
+      "option": {
+        "specVersion": "json-ld-1.1"
+      }
+    },
+    {
+      "@id": "#tli05",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:ToRDFTest"
+      ],
+      "name": "li05",
+      "purpose": "rdf-array: an array value of a @container @list term is one sequence",
+      "input": "toRdf/li05-in.jsonld",
+      "expect": "toRdf/li05-out.nq",
+      "option": {
+        "specVersion": "json-ld-1.1"
+      }
+    },
+    {
+      "@id": "#tli06",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:ToRDFTest"
+      ],
+      "name": "li06",
+      "purpose": "rdf-array: a single non-array @list value is a one-element sequence",
+      "input": "toRdf/li06-in.jsonld",
+      "expect": "toRdf/li06-out.nq",
+      "option": {
+        "specVersion": "json-ld-1.1"
+      }
+    },
+    {
+      "@id": "#tli07",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:ToRDFTest"
+      ],
+      "name": "li07",
+      "purpose": "rdf-array: null inside a @list leaves no element",
+      "input": "toRdf/li07-in.jsonld",
+      "expect": "toRdf/li07-out.nq",
+      "option": {
+        "specVersion": "json-ld-1.1"
+      }
+    },
+    {
+      "@id": "#tli08",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:ToRDFTest"
+      ],
+      "name": "li08",
+      "purpose": "rdf-array: node objects as elements; a blank node element keeps its own triples",
+      "input": "toRdf/li08-in.jsonld",
+      "expect": "toRdf/li08-out.nq",
+      "option": {
+        "specVersion": "json-ld-1.1"
+      }
+    },
+    {
+      "@id": "#tli09",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:ToRDFTest"
+      ],
+      "name": "li09",
+      "purpose": "rdf-array: a sequence in a named graph",
+      "input": "toRdf/li09-in.jsonld",
+      "expect": "toRdf/li09-out.nq",
+      "option": {
+        "specVersion": "json-ld-1.1"
+      }
+    },
+    {
+      "@id": "#tli10",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:ToRDFTest"
+      ],
+      "name": "li10",
+      "purpose": "rdf-array: IRI elements resolved against @base",
+      "input": "toRdf/li10-in.jsonld",
+      "expect": "toRdf/li10-out.nq",
+      "option": {
+        "specVersion": "json-ld-1.1"
+      }
+    },
+    {
+      "@id": "#tli11",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:ToRDFTest"
+      ],
+      "name": "li11",
+      "purpose": "rdf-array: native values and a language-tagged string as elements",
+      "input": "toRdf/li11-in.jsonld",
+      "expect": "toRdf/li11-out.nq",
+      "option": {
+        "specVersion": "json-ld-1.1"
+      }
+    },
+    {
+      "@id": "#tli12",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:ToRDFTest"
+      ],
+      "name": "li12",
+      "purpose": "rdf-array: a @set is still two values, not a sequence",
+      "input": "toRdf/li12-in.jsonld",
+      "expect": "toRdf/li12-out.nq",
+      "option": {
+        "specVersion": "json-ld-1.1"
+      }
+    },
+    {
+      "@id": "#tli13",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:ToRDFTest"
+      ],
+      "name": "li13",
+      "purpose": "rdf-array: two equal lists are one sequence term",
+      "input": "toRdf/li13-in.jsonld",
+      "expect": "toRdf/li13-out.nq",
+      "option": {
+        "specVersion": "json-ld-1.1"
+      }
+    }
+  ]
+}

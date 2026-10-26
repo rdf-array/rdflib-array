@@ -12,6 +12,8 @@ from typing import IO, Union
 
 from pyparsing import (
     FollowedBy,
+    Forward,
+    Group,
     LineEnd,
     Literal,
     Optional,
@@ -32,7 +34,7 @@ from rdflib.plugins.sparql.parser import (
 )
 from rdflib.plugins.sparql.parserutils import Comp, CompValue, Param
 from rdflib.query import Result, ResultParser
-from rdflib.term import BNode, Identifier, URIRef
+from rdflib.term import BNode, Identifier, Sequence, URIRef
 from rdflib.term import Literal as RDFLiteral
 
 ParserElement.set_default_whitespace_chars(" \n")
@@ -55,7 +57,18 @@ NONE_VALUE = object()
 EMPTY = FollowedBy(LineEnd()) | FollowedBy("\t")
 EMPTY.set_parse_action(lambda x: NONE_VALUE)
 
-TERM = RDFLITERAL | IRIREF | BLANK_NODE_LABEL | NumericLiteral | BooleanLiteral
+class _SequenceTokens:
+    """RDF-: the parsed elements of a ( ... ) cell, converted by TSVResultParser.convertTerm"""
+
+    def __init__(self, items: list):
+        self.items = items
+
+
+SEQUENCE = Forward()
+TERM = RDFLITERAL | IRIREF | BLANK_NODE_LABEL | NumericLiteral | BooleanLiteral | SEQUENCE
+SEQUENCE <<= (Suppress("(") + Group(ZeroOrMore(TERM)) + Suppress(")")).set_parse_action(
+    lambda tokens: [_SequenceTokens(list(tokens[0]))]
+)
 
 ROW = (EMPTY | TERM) + ZeroOrMore(Suppress("\t") + (EMPTY | TERM))
 ROW.parse_with_tabs()
@@ -105,6 +118,8 @@ class TSVResultParser(ResultParser):
     ) -> typing.Optional[Identifier]:
         if t is NONE_VALUE:
             return None
+        if isinstance(t, _SequenceTokens):
+            return Sequence([self.convertTerm(e) for e in t.items])  # type: ignore[misc]
         if isinstance(t, CompValue):
             if t.name == "literal":
                 return RDFLiteral(t.string, lang=t.lang, datatype=t.datatype)

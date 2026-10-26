@@ -1,0 +1,13 @@
+{
+  "@id": "http://ex.org/s",
+  "http://ex.org/p": {
+    "@list": [
+      {
+        "@id": "http://ex.org/a"
+      },
+      {
+        "http://ex.org/q": 1
+      }
+    ]
+  }
+}

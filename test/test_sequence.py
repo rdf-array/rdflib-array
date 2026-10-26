@@ -157,7 +157,9 @@ class TestSparql:
     def test_collection_with_property_list_elements(self) -> None:
         g = parse("<s> <p> (1 [ <q> 2 ]) .")
         rows = list(g.query("SELECT ?s WHERE { ?s <http://example.org/p> (1 [ <http://example.org/q> 2 ]) }"))
-        # the [ .. ] mints a fresh blank node, so the sequence pattern can't match the data's
+        # the [ .. ] is a variable in the pattern: it binds the data's element, whose <q> 2 holds
+        assert rows == [(EX.s,)]
+        rows = list(g.query("SELECT ?s WHERE { ?s <http://example.org/p> (1 [ <http://example.org/q> 3 ]) }"))
         assert rows == []
         rows = list(g.query("SELECT ?o WHERE { <http://example.org/s> <http://example.org/p> ?o }"))
         assert isinstance(rows[0].o, Sequence) and len(rows[0].o) == 2

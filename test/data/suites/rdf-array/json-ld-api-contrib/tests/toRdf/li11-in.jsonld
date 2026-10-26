@@ -1,0 +1,13 @@
+{
+  "@id": "http://ex.org/s",
+  "http://ex.org/p": {
+    "@list": [
+      1,
+      true,
+      {
+        "@value": "chat",
+        "@language": "fr"
+      }
+    ]
+  }
+}

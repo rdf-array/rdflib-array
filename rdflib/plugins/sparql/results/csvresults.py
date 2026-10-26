@@ -14,7 +14,7 @@ from typing import IO, Optional, Union, cast
 
 from rdflib.plugins.sparql.processor import SPARQLResult
 from rdflib.query import Result, ResultParser, ResultSerializer
-from rdflib.term import BNode, Identifier, Literal, URIRef, Variable
+from rdflib.term import BNode, Identifier, Literal, Sequence, URIRef, Variable
 
 
 class CSVResultParser(ResultParser):
@@ -100,7 +100,20 @@ class CSVResultSerializer(ResultSerializer):
     ) -> Union[str, Identifier]:
         if term is None:
             return ""
+        elif isinstance(term, Sequence):
+            # RDF-: the sequence is one cell, its literals quoted: ("1" http://a.example/o (...))
+            return _csv_sequence(term)
         elif isinstance(term, BNode):
             return f"_:{term}"
         else:
             return term
+
+
+def _csv_sequence(term: Identifier) -> str:
+    if isinstance(term, Sequence):
+        return "(" + " ".join(_csv_sequence(e) for e in term) + ")"
+    if isinstance(term, Literal):
+        return '"' + str(term).replace("\\", "\\\\").replace('"', '\\"') + '"'
+    if isinstance(term, BNode):
+        return f"_:{term}"
+    return str(term)

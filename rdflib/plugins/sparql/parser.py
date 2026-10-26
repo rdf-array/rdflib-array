@@ -79,7 +79,7 @@ def expandTriples(terms: ParseResults) -> list[Any]:
                 # is this a single [] ?
                 if len(t) > 1:
                     # Don't update last_subject/last_predicate
-                    res += t[1:] if isinstance(t[0], rdflib.term.Sequence) else t
+                    res += t[1:] if _is_sequence(t[0]) else t
                 # is this bnode the subject of more triples?
                 if i + 1 < l_ and terms[i + 1] not in [
                     ".",
@@ -100,7 +100,7 @@ def expandTriples(terms: ParseResults) -> list[Any]:
                 print(len(res), t)
         # RDF-: a collection standing alone, `{ ( 1 2 ) }`, is one term and no
         # triples (its cells were triples in RDF 1.1)
-        if len(res) % 3 == 1 and isinstance(res[-1], rdflib.term.Sequence):
+        if len(res) % 3 == 1 and _is_sequence(res[-1]):
             res.pop()
 
         if DEBUG:
@@ -139,6 +139,13 @@ def expandBNodeTriples(terms: ParseResults) -> list[Any]:
         raise
 
 
+def _is_sequence(x: Any) -> bool:
+    """RDF-: a sequence term, or one waiting for its prefixed names (expandCollection)"""
+    return isinstance(x, rdflib.term.Sequence) or (
+        isinstance(x, CompValue) and x.name == "sequence"
+    )
+
+
 def expandCollection(terms: ParseResults) -> list[Any]:
     """
     RDF-: ( 1 2 3 ) is one sequence term, not rdf:first/rdf:rest triples.
@@ -152,10 +159,15 @@ def expandCollection(terms: ParseResults) -> list[Any]:
     other: list[Any] = []
     for x in terms:
         if isinstance(x, list):  # is this a [ .. ] or a nested collection?
-            other += x[1:] if isinstance(x[0], rdflib.term.Sequence) else x
+            other += x[1:] if _is_sequence(x[0]) else x
             x = x[0]
         elements.append(x)
-    seq = rdflib.term.Sequence(elements)
+    if all(isinstance(e, rdflib.term.Node) for e in elements):
+        seq: Any = rdflib.term.Sequence(elements)
+    else:
+        # a prefixed name or a typed literal is a CompValue until the algebra
+        # resolves it against the prologue; translatePName then builds the term
+        seq = CompValue("sequence", elements=elements)
 
     if DEBUG:
         print("CollectionOut", seq, other)

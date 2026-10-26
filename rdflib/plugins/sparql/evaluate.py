@@ -51,7 +51,7 @@ from rdflib.plugins.sparql.sparql import (
     QueryContext,
     SPARQLError,
 )
-from rdflib.term import BNode, Identifier, Literal, URIRef, Variable
+from rdflib.term import BNode, Identifier, Literal, Sequence, URIRef, Variable
 
 if TYPE_CHECKING:
     from rdflib.paths import Path
@@ -67,6 +67,31 @@ except ImportError:
     _HAS_ORJSON = False
 
 _Triple = tuple[Identifier, Identifier, Identifier]
+
+
+def _groundSequence(ctx: QueryContext, x: Any) -> Any:
+    """RDF-: a sequence pattern with its bound variables substituted, or None
+    when a variable (or a blank node, a variable in a pattern) is still free"""
+    if isinstance(x, Sequence):
+        elements = [_groundSequence(ctx, e) for e in x.elements]
+        return None if None in elements else Sequence(elements)
+    return ctx[x]
+
+
+def _unifySequence(ctx: QueryContext, pattern: Any, term: Any) -> bool:
+    """RDF-: bind the free variables of a sequence pattern to the matching
+    elements of a data term; False when the term does not fit the pattern"""
+    if isinstance(pattern, (Variable, BNode)):
+        bound = ctx[pattern]
+        if bound is None:
+            ctx[pattern] = term
+            return True
+        return bound == term
+    if isinstance(pattern, Sequence):
+        if not isinstance(term, Sequence) or len(term) != len(pattern):
+            return False
+        return all(_unifySequence(ctx, p, t) for p, t in zip(pattern.elements, term.elements))
+    return pattern == term
 
 
 def evalBGP(
@@ -85,6 +110,37 @@ def evalBGP(
     _s = ctx[s]
     _p = ctx[p]
     _o = ctx[o]
+
+    # RDF-: a sequence holding variables matches the data's sequences of its
+    # shape, binding the variables to their elements
+    open_s = isinstance(s, Sequence) and _groundSequence(ctx, s) is None
+    open_o = isinstance(o, Sequence) and _groundSequence(ctx, o) is None
+    if isinstance(s, Sequence) or isinstance(o, Sequence):
+        if open_s or open_o:
+            _s = None if open_s else _groundSequence(ctx, s)
+            _o = None if open_o else _groundSequence(ctx, o)
+            for ss, sp, so in ctx.graph.triples((_s, _p, _o)):  # type: ignore[union-attr, arg-type]
+                c = ctx.push()
+                if open_s and not _unifySequence(c, s, ss):
+                    continue
+                if not open_s and _s is None:
+                    c[s] = ss  # type: ignore[assignment]
+                try:
+                    if _p is None:
+                        c[p] = sp  # type: ignore[assignment]
+                except AlreadyBound:
+                    continue
+                if open_o and not _unifySequence(c, o, so):
+                    continue
+                try:
+                    if not open_o and _o is None:
+                        c[o] = so  # type: ignore[assignment]
+                except AlreadyBound:
+                    continue
+                yield from evalBGP(c, bgp[1:])
+            return
+        _s = _groundSequence(ctx, s)
+        _o = _groundSequence(ctx, o)
 
     # type error: Item "None" of "Optional[Graph]" has no attribute "triples"
     # type Argument 1 to "triples" of "Graph" has incompatible type "tuple[Union[str, Path, None], Union[str, Path, None], Union[str, Path, None]]"; expected "tuple[Optional[Node], Optional[Node], Optional[Node]]"

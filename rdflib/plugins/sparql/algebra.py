@@ -35,7 +35,7 @@ from rdflib.plugins.sparql.sparql import Prologue, Query, Update
 
 # ---------------------------
 # Some convenience methods
-from rdflib.term import BNode, Identifier, Literal, URIRef, Variable
+from rdflib.term import BNode, Identifier, Literal, Sequence, URIRef, Variable
 
 
 def OrderBy(p: CompValue, expr: list[CompValue]) -> CompValue:
@@ -183,6 +183,9 @@ def translatePName(  # type: ignore[return]
         if p.name == "pname":
             # type error: Incompatible return value type (got "Union[CompValue, str, None]", expected "Optional[Identifier]")
             return prologue.absolutize(p)  # type: ignore[return-value]
+        if p.name == "sequence":
+            # RDF-: the parser's sequence with prefixed names; its elements are resolved by now
+            return Sequence(p.elements)
         if p.name == "literal":
             # type error: Argument "datatype" to "Literal" has incompatible type "Union[CompValue, str, None]"; expected "Optional[str]"
             return Literal(
@@ -490,12 +493,25 @@ def _aggs(e, A) -> Optional[Variable]:  # type: ignore[return]
 
 
 # type error: Missing return statement
+def _sequenceVars(x: Sequence) -> set[Variable]:
+    """RDF-: the variables inside a sequence pattern, at any depth"""
+    res: set[Variable] = set()
+    for e in x.elements:
+        if isinstance(e, Variable):
+            res.add(e)
+        elif isinstance(e, Sequence):
+            res |= _sequenceVars(e)
+    return res
+
+
 def _findVars(x, res: set[Variable]) -> Optional[CompValue]:  # type: ignore[return]
     """
     Find all variables in a tree
     """
     if isinstance(x, Variable):
         res.add(x)
+    if isinstance(x, Sequence):
+        res |= _sequenceVars(x)
     if isinstance(x, CompValue):
         if x.name == "Bind":
             res.add(x.var)
@@ -513,6 +529,8 @@ def _addVars(x, children: list[set[Variable]]) -> set[Variable]:
     """
     if isinstance(x, Variable):
         return set([x])
+    elif isinstance(x, Sequence):
+        return _sequenceVars(x)
     elif isinstance(x, CompValue):
         if x.name == "RelationalExpression":
             x["_vars"] = set()

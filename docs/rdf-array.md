@@ -37,7 +37,8 @@ to sort terms it comes after literals.
 | long Turtle (`longturtle.py`) | as Turtle | as Turtle, one element per line |
 | N-Triples, N-Quads (`plugins/parsers/ntriples.py`) | `( … )` of N-Triples terms, nested, as subject or object: an RDF- extension of the grammar | the term's N-Triples form |
 | JSON-LD (`plugins/parsers/jsonld.py`, `plugins/serializers/jsonld.py`) | `@list` is a `Sequence` (nested lists nest; an empty `@list` is `()`) | a `Sequence` object is an `@list`; a ladder is ordinary nodes |
-| SPARQL (`plugins/sparql/parser.py`) | `( … )` in a triple pattern or a `CONSTRUCT` template is one sequence term, `()` the empty one; a variable inside a sequence pattern is not unified with a data sequence's elements | – |
+| SPARQL (`plugins/sparql/parser.py`) | `( … )` in a triple pattern or a `CONSTRUCT` template is one sequence term, `()` the empty one; variables inside it bind to a data sequence's elements (`evaluate.py`), and `ORDER BY` sorts sequences after literals (`evalutils.py`) | – |
+| SPARQL results (`plugins/sparql/results/`) | a sequence binding is `{"type":"seq","value":[…]}` in JSON, `<seq>` in XML, a `( … )` cell in CSV and the Turtle term in TSV, read and written | – |
 | RDF/XML, TriX, HexTuples | unchanged: `rdf:parseType="Collection"` is still a ladder | a graph holding a sequence term is refused with an error naming it, since these syntaxes have no form for one |
 
 ## Graph API
@@ -69,8 +70,6 @@ suites run with these entries flagged, each with an RDF- reason in the test file
   `collection_object`, `empty_collection`, `nested_collection`, `first`, `last`, `*-subm-08`,
   `*-subm-09`), and the same entries plus `turtle-eval-lists-01` … `05` in the N3 suite's Turtle
   manifests (`test_n3_w3c.py`, `EXPECTED_FAILURES`).
-- SPARQL 1.0 `basic/list-3` and `list-4` (`test_sparql10_w3c.py`): variables inside a sequence
-  pattern.
 - The JSON-LD test suites (`test/jsonld/test_onedotone.py`, `test_testsuite.py`): the `toRdf`,
   `fromRdf` and `html` cases whose expected N-Quads spell a `@list` as a ladder or `rdf:nil`.
 - Round trips (`test/test_roundtrip.py`): the 13 N3 fixtures that write collections, through
@@ -84,6 +83,30 @@ suites run with these entries flagged, each with an RDF- reason in the test file
 - The harness (`test/utils`) collapses blank nodes inside sequences and compares a formula inside
   a sequence by its triple set.
 
+The shared rdf-array tests, copied into `test/data/suites/rdf-array/` by its `update.sh` (the
+commits are in `*.commit`):
+
+- [rdf-tests-contrib](https://github.com/rdf-array/rdf-tests-contrib) through
+  `test/test_w3c_spec/test_rdf_array_contrib.py`: Turtle-, TriG-, N-Triples- and N-Quads-array
+  syntax and evaluation with each format's W3C checker, and SPARQL-array evaluation, update,
+  syntax and results with the SPARQL checker. 59 pass. 28 are `xfail(strict=True)`: the 27 that
+  require `ra:PositionPatterns` or `ra:SequenceFunctions` (`((e))[i]`, `isSEQ`, `SEQLEN`, `SEQ`,
+  `x[i]`; [rdf-array#8](https://github.com/rdf-array/rdf-array/issues/8)), and Turtle
+  `seq-literal-kinds`, since rdflib keeps `"x"^^xsd:string` apart from `"x"` at any position. The
+  negative syntax tests for positions run and pass.
+- [json-ld-api-contrib](https://github.com/rdf-array/json-ld-api-contrib) `toRdf` and `fromRdf`
+  through `test/jsonld/test_rdf_array_contrib.py` and the JSON-LD runner: all 18 pass. The
+  JSON-LD-array tests (`array-manifest.jsonld`) need a JSON-LD-array processor and are not copied.
+
+Running them found and fixed: a sequence accepted as a Turtle predicate; `ORDER BY` over
+sequences (no sort key); a prefixed name or typed literal inside a SPARQL sequence pattern (the
+parser built the term before the prologue resolved it; it now waits for the algebra); variables
+inside a sequence pattern, now unified with the data's elements (`evalBGP`), collected for
+`SELECT *` and projection, and filled in `CONSTRUCT` templates; and the four result formats, which
+now read and write a sequence (`{"type":"seq"}`, `<seq>`, the CSV `( … )` cell and the TSV term).
+SPARQL 1.0 `basic/list-3` and `list-4` pass as a result, and
+`test_sequence.py::test_collection_with_property_list_elements` now expects the match.
+
 Unrelated to RDF-: `test/test_misc/test_plugins.py` installs a test plugin with `pip`, which a
 `uv` virtual environment does not have; the two tests fail in such an environment.
 
@@ -94,8 +117,8 @@ Docker). The W3C report files in `test_reports/` were not regenerated.
 
 - RDF/XML, TriX and HexTuples refuse a graph holding a sequence term rather than inventing a form
   for it; their parsers are unchanged.
-- SPARQL: a variable inside a `( … )` pattern is not bound from a data sequence's elements, and
-  there are no functions over sequences (length, element access, construction).
+- SPARQL: no position patterns (`((e))[i]`, `[?i]`, `[*]`) and no functions over sequences
+  (`isSEQ`, `SEQLEN`, `SEQ`, `x[i]`).
 - JSON-LD has no node form for a sequence as a subject.
 - Stores other than `Memory` are untested with the new term (it is a `str`, so stores that key on
   the term's string form should hold it).

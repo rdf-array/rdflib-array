@@ -881,6 +881,9 @@ class SinkParser:
 
         j = self.prop(argstr, i, r)
         if j >= 0:
+            if self.turtle and isinstance(r[0], Sequence):
+                # RDF-: a sequence is a term, but never a predicate
+                self.BadSyntax(argstr, i, "a sequence cannot be a predicate")
             res.append(("->", r[0]))
             return j
 

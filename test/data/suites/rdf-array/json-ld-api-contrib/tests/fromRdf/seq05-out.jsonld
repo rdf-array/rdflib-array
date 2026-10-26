@@ -1,0 +1,19 @@
+[
+  {
+    "@graph": [
+      {
+        "@id": "http://ex.org/s",
+        "http://ex.org/p": [
+          {
+            "@list": [
+              {
+                "@value": "a"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "@id": "http://ex.org/g"
+  }
+]

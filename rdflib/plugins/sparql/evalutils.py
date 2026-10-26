@@ -18,7 +18,7 @@ from rdflib.plugins.sparql.sparql import (
     QueryContext,
     SPARQLError,
 )
-from rdflib.term import BNode, Identifier, Literal, URIRef, Variable
+from rdflib.term import BNode, Identifier, Literal, Sequence, URIRef, Variable
 
 _ContextType = Union[FrozenBindings, QueryContext]
 _FrozenDictT = TypeVar("_FrozenDictT", bound=FrozenDict)
@@ -152,17 +152,20 @@ def _fillTemplate(
     """
 
     bnodeMap: collections.defaultdict[BNode, BNode] = collections.defaultdict(BNode)
-    for t in template:
-        s, p, o = t
 
-        _s = solution.get(s)
-        _p = solution.get(p)
-        _o = solution.get(o)
-
+    def fill(x: Any) -> Any:
         # instantiate new bnodes for each solution
-        _s, _p, _o = [
-            bnodeMap[x] if isinstance(x, BNode) else y for x, y in zip(t, (_s, _p, _o))
-        ]
+        if isinstance(x, BNode):
+            return bnodeMap[x]
+        if isinstance(x, Sequence):
+            # RDF-: a template sequence is filled element by element, and is
+            # unbound when one of its elements is
+            elements = [fill(e) for e in x.elements]
+            return None if None in elements else Sequence(elements)
+        return solution.get(x)
+
+    for t in template:
+        _s, _p, _o = (fill(x) for x in t)
 
         if _s is not None and _p is not None and _o is not None:
             yield (_s, _p, _o)
@@ -181,3 +184,6 @@ def _val(v: _ValueT) -> tuple[int, _ValueT]:
         return (2, v)
     elif isinstance(v, Literal):
         return (3, v)
+    elif isinstance(v, Sequence):
+        # RDF-: after literals, element by element, a shorter prefix first
+        return (4, tuple(_val(e) for e in v.elements))  # type: ignore[arg-type]

@@ -1,0 +1,25 @@
+[
+  {
+    "@id": "http://ex.org/s",
+    "http://ex.org/p": [
+      {
+        "@list": [
+          {
+            "@id": "http://ex.org/a"
+          },
+          {
+            "@id": "_:b0"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "@id": "_:b0",
+    "http://ex.org/q": [
+      {
+        "@value": "c"
+      }
+    ]
+  }
+]
