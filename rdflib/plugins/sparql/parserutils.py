@@ -94,6 +94,28 @@ def value(
         return val
 
 
+class Gap(Identifier):
+    """rdf-array: a gap in a sequence pattern. ``...`` matches any run of members,
+    and a named gap ``...?rest`` also binds ``?rest`` to the run it matched, as a
+    sequence. A Gap is a Node so that it can sit inside the pattern's Sequence
+    term; it never reaches a graph, since templates and data take no gaps."""
+
+    __slots__ = ("var",)
+
+    var: Optional[Variable]
+
+    def __new__(cls, var: Optional[Variable] = None):
+        inst = str.__new__(cls, "..." + (var.n3() if var is not None else ""))
+        inst.var = var
+        return inst
+
+    def n3(self, namespace_manager: Any = None) -> str:
+        return str(self)
+
+    def __reduce__(self) -> tuple[type[Gap], tuple[Optional[Variable]]]:
+        return (Gap, (self.var,))
+
+
 class ParamValue:
     """
     The result of parsing a Param

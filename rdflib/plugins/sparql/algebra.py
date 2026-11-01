@@ -30,7 +30,7 @@ from rdflib.paths import (
 )
 from rdflib.plugins.sparql.operators import TrueFilter, and_
 from rdflib.plugins.sparql.operators import simplify as simplifyFilters
-from rdflib.plugins.sparql.parserutils import CompValue, Expr
+from rdflib.plugins.sparql.parserutils import CompValue, Expr, Gap
 from rdflib.plugins.sparql.sparql import Prologue, Query, Update
 
 # ---------------------------
@@ -80,6 +80,16 @@ def Extend(
     p: CompValue, expr: typing.Union[Identifier, Expr], var: Variable
 ) -> CompValue:
     return CompValue("Extend", p=p, expr=expr, var=var)
+
+
+def Unnest(
+    p: CompValue,
+    expr: typing.Union[Expr, Literal, Variable, URIRef],
+    var: Variable,
+    at: Optional[Variable],
+) -> CompValue:
+    """rdf-array: UNNEST(expr AS var AT at) over the solutions of p"""
+    return CompValue("Unnest", p=p, expr=expr, var=var, at=at)
 
 
 def Values(res: list[dict[Variable, str]]) -> CompValue:
@@ -373,6 +383,10 @@ def translateGroupGraphPattern(graphPattern: CompValue) -> CompValue:
             # the expression as is. This is needed because EXISTS has a graph pattern
             # which must be translated to work properly during evaluation.
             G = Extend(G, translateExists(p.expr), p.var)
+        elif p.name == "Unnest":
+            # rdf-array: Unnest(p, expr, var, at): one solution of p per member of the
+            # sequence expr evaluates to, var the member and at its 1-based position
+            G = Unnest(G, translateExists(p.expr), p.var, p.at)
 
         else:
             raise Exception(
@@ -494,10 +508,13 @@ def _aggs(e, A) -> Optional[Variable]:  # type: ignore[return]
 
 # type error: Missing return statement
 def _sequenceVars(x: Sequence) -> set[Variable]:
-    """rdf-array: the variables inside a sequence pattern, at any depth"""
+    """rdf-array: the variables inside a sequence pattern, at any depth; a named gap's too"""
     res: set[Variable] = set()
     for e in x.elements:
-        if isinstance(e, Variable):
+        if isinstance(e, Gap):
+            if e.var is not None:
+                res.add(e.var)
+        elif isinstance(e, Variable):
             res.add(e)
         elif isinstance(e, Sequence):
             res |= _sequenceVars(e)
@@ -516,6 +533,12 @@ def _findVars(x, res: set[Variable]) -> Optional[CompValue]:  # type: ignore[ret
         if x.name == "Bind":
             res.add(x.var)
             return x  # stop recursion and finding vars in the expr
+        elif x.name == "Unnest":
+            # rdf-array: UNNEST binds its member and position variables, as BIND does
+            res.add(x.var)
+            if x.at is not None:
+                res.add(x.at)
+            return x
         elif x.name == "SubSelect":
             if x.projection:
                 res.update(v.var or v.evar for v in x.projection)
@@ -539,6 +562,14 @@ def _addVars(x, children: list[set[Variable]]) -> set[Variable]:
             x["_vars"] = reduce(
                 operator.or_,
                 [child for child, part in zip(children, x) if part != "expr"],
+                set(),
+            )
+        elif x.name == "Unnest":
+            # rdf-array: as for Extend; children are the non-None parts (at may be None)
+            parts = [k for k, v in x.items() if v is not None]
+            x["_vars"] = reduce(
+                operator.or_,
+                [child for child, part in zip(children, parts) if part != "expr"],
                 set(),
             )
 

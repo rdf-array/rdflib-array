@@ -37,9 +37,75 @@ to sort terms it comes after literals.
 | long Turtle (`longturtle.py`) | as Turtle | as Turtle, one element per line |
 | N-Triples, N-Quads (`plugins/parsers/ntriples.py`) | `( … )` of N-Triples terms, nested, as subject or object: an rdf-array extension of the grammar | the term's N-Triples form |
 | JSON-LD (`plugins/parsers/jsonld.py`, `plugins/serializers/jsonld.py`) | `@list` is a `Sequence` (nested lists nest; an empty `@list` is `()`) | a `Sequence` object is an `@list`; a ladder is ordinary nodes |
-| SPARQL (`plugins/sparql/parser.py`) | `( … )` in a triple pattern or a `CONSTRUCT` template is one sequence term, `()` the empty one; variables inside it bind to a data sequence's elements (`evaluate.py`), and `ORDER BY` sorts sequences after literals (`evalutils.py`) | – |
+| SPARQL (`plugins/sparql/parser.py`) | `( … )` in a triple pattern or a `CONSTRUCT` template is one sequence term, `()` the empty one; variables inside it bind to a data sequence's elements (`evaluate.py`), and `ORDER BY` sorts sequences after literals (`evalutils.py`). The SPARQL-array syntax below: gaps, `UNNEST`, indexes, slices, `IN ?seq` and the sequence functions | – |
 | SPARQL results (`plugins/sparql/results/`) | a sequence binding is `{"type":"seq","value":[…]}` in JSON, `<seq>` in XML, a `( … )` cell in CSV and the Turtle term in TSV, read and written | – |
 | RDF/XML, TriX, HexTuples | unchanged: `rdf:parseType="Collection"` is still a ladder | a graph holding a sequence term is refused with an error naming it, since these syntaxes have no form for one |
+
+## SPARQL-array
+
+The query syntax of rdf-array's [array-syntax.md](https://github.com/rdf-array/rdf-array/blob/main/docs/array-syntax.md)
+(§1), as `parser.py` (pyparsing) reads it, `algebra.py` translates it and `evaluate.py` and
+`operators.py` run it. With the data of that note's §4:
+
+```sparql
+PREFIX : <http://ex/>
+SELECT ?obs ?v ?unit WHERE {                   # a 3-tuple anywhere in a list of tuples
+  ?obs :component ( ... ( "8480-6" ?name ( ?v ?unit ) ) ... )
+}
+SELECT ?h ?t WHERE { :poly :points ( ?h ...?t ) }        # head and tail
+SELECT ?m ?i ?j ?x WHERE {                               # every cell, with its row and column
+  ?m :matrix ?rows . UNNEST(?rows AS ?row AT ?i) UNNEST(?row AS ?x AT ?j)
+}
+SELECT ?cell ?cols WHERE {
+  :m1 :matrix ?rows BIND(?rows[2][3] AS ?cell) BIND(?rows[1][2...3] AS ?cols)
+}
+SELECT ?s WHERE { ?s :points ?pts FILTER(SEQ(3, 4) IN ?pts && SEQLEN(?pts) > 2) }
+```
+
+- **Gaps** (`...` and `...?rest`) are members of a sequence pattern, in `WHERE` only: `CollectionPath`
+  is `'(' SeqMemberPath+ ')'` with `SeqMemberPath ::= GraphNodePath | '...' | '...' Var` (the
+  named gap is one token: `( ?a ... ?b )` is a gap then the member `?b`, `( ?a ...?b )` a named
+  gap). `Collection`, used by templates and `INSERT`/`DELETE DATA`, is unchanged, so a gap there is
+  a syntax error. A gap is a `parserutils.Gap` node inside the pattern's `Sequence` term, with
+  `var` the named gap's variable. The gap is tried before a member, so `( 1... )` is 1 and a gap
+  and `( :a... )` is `:a` and a gap (a local name cannot end in `.`), while `:a...b` stays one
+  prefixed name, as `:a.b` is. `evalBGP` matches a pattern with gaps in every way it can
+  (`_matchTerm`, `_matchMembers`): a gap takes each run length in turn, a named gap binds its
+  variable to the run as a sequence, and a variable or named gap met twice must match equal
+  values (term equality, as in a join). `( ... ?k ?v ... )` therefore matches every adjacent
+  pair, and `( ...?pre ?x ... )` with `SEQLEN(?pre) + 1` gives a member's position.
+- **`UNNEST(expr AS ?x AT ?i)`** is a `GraphPatternNotTriples` (`AT ?i` optional). The algebra node
+  is `Unnest(p, expr, var, at)`, joined into the group like `Extend`; `evalUnnest` yields one
+  solution per member of the sequence `expr` evaluates to, `?i` counting from 1, and none when
+  `expr` is unbound, in error or not a sequence. A member or position variable that is bound
+  already must agree with the member (join semantics), where SPARQL's `BIND` would make the
+  query a syntax error.
+- **`expr[i]`, `expr[m...n]`, `expr[m...]`, `expr[...n]`** are `PostfixExpression` suffixes on a
+  `PrimaryExpression`, folded by `expandPostfix` into nested `Index(expr, index)` and
+  `Slice(expr, start, end)` expressions (`operators.Index`, `operators.Slice`). An index is
+  1-based; one that is out of range (so `?s[0]` and `?s[-1]` too), not an integer, or applied
+  to a non-sequence is an error, and a `BIND` leaves the variable unbound. A slice is closed,
+  1-based and clamped, as the note says: `SEQ(4, 5)[2...3]` is `(5)`, `SEQ()[2...]` is `()`,
+  `?s[3...2]` is `()`; a start below 1 is an error, and `[...]` alone is a syntax error. `[2:4]`
+  is a syntax error since `:4` lexes as a prefixed name. In `ORDER BY` and `GROUP BY` an index
+  needs brackets, `ORDER BY (?x[1])`, because a bare `?x` there is a variable.
+- **`?x IN ?seq`, `?x NOT IN ?seq`**: the right-hand side of `IN` may be a `SeqRef`, a variable or a
+  `SEQ(…)` call with any index or slice suffixes, so that `IN (` still opens an expression list
+  (`?x IN (?seq)` asks whether `?x` equals `?seq`). `RelationalExpression` gets the operators
+  `IN SEQ` and `NOT IN SEQ`: true when some member equals the needle by the value equality of `=`,
+  an error when the right-hand side is not a sequence; as in SPARQL 1.1's `IN`, a comparison in
+  error is skipped when another member matches.
+- **`SEQ(…)`, `SEQLEN(e)`, `isSEQ(e)`** are `BuiltInCall`s (`Builtin_SEQ`, `Builtin_SEQLEN`,
+  `Builtin_isSEQ`). `SEQ()` is the empty sequence; an argument in error makes `SEQ` an error;
+  `SEQLEN` of a non-sequence is an error. The keywords are case-insensitive, like SPARQL's.
+- **`=` and `!=`** compare sequences member by member with the value equality of `=`
+  (`_sequenceEq`), so `SEQ(1.0, 2) = SEQ(1, 2)`; a sequence equals no other kind of term, without
+  error; `sameTerm` and the patterns compare by term. `()` in a pattern or data is the empty
+  sequence, and `SEQ()` is its expression.
+
+Where rdflib differs from the note's worked examples: `FILTER(?v >= 90)` keeps a `?v` of `"high"`,
+because rdflib orders a string against a number instead of raising the type error SPARQL
+prescribes. This predates rdf-array; `isNUMERIC(?v) && ?v >= 90` says what was meant.
 
 ## Graph API
 
@@ -60,9 +126,11 @@ to sort terms it comes after literals.
 
 ## Tests
 
-New: `test/test_sequence.py` (22 tests: the term, parsing in Turtle/TriG/N3/N-Triples/N-Quads,
-untouched legacy ladders, round trips, SPARQL, `items` and `Collection`). The W3C and other
-suites run with these entries flagged, each with an rdf-array reason in the test file:
+New: `test/test_sequence.py` (49 tests: the term, parsing in Turtle/TriG/N3/N-Triples/N-Quads,
+untouched legacy ladders, round trips, SPARQL, `items` and `Collection`, and in
+`TestArraySyntax` the SPARQL-array syntax: array-syntax.md's §4.1 worked examples with the
+result rows given there, and its §5 edge cases). The W3C and other suites run with these
+entries flagged, each with an rdf-array reason in the test file:
 
 - W3C Turtle and TriG evaluation tests whose data writes a collection, where the expected
   N-Triples spells a ladder (`RDF_MINUS_COLLECTION_TESTS` in `test/test_w3c_spec/test_turtle_w3c.py`
@@ -84,16 +152,18 @@ suites run with these entries flagged, each with an rdf-array reason in the test
   a sequence by its triple set.
 
 The shared rdf-array tests, copied into `test/data/suites/rdf-array/` by its `update.sh` (the
-commits are in `*.commit`):
+commits are in `*.commit`; `update.sh DIR` copies a local checkout instead of cloning GitHub):
 
 - [rdf-tests-contrib](https://github.com/rdf-array/rdf-tests-contrib) through
   `test/test_w3c_spec/test_rdf_array_contrib.py`: Turtle-, TriG-, N-Triples- and N-Quads-array
   syntax and evaluation with each format's W3C checker, and SPARQL-array evaluation, update,
-  syntax and results with the SPARQL checker. 59 pass. 28 are `xfail(strict=True)`: the 27 that
-  require `ra:PositionPatterns` or `ra:SequenceFunctions` (`((e))[i]`, `isSEQ`, `SEQLEN`, `SEQ`,
-  `x[i]`; [rdf-array#8](https://github.com/rdf-array/rdf-array/issues/8)), and Turtle
-  `seq-literal-kinds`, since rdflib keeps `"x"^^xsd:string` apart from `"x"` at any position. The
-  negative syntax tests for positions run and pass.
+  syntax and results with the SPARQL checker, the `ra:GapPatterns`, `ra:Unnest` and
+  `ra:SequenceFunctions` tests included (the suite at commit `eee4e346` has array-syntax.md's
+  §4.1 examples and §5 edge cases as tests, in place of the strawman's position patterns).
+  118 pass. 2 are `xfail(strict=True)`: Turtle `seq-literal-kinds`, since rdflib keeps
+  `"x"^^xsd:string` apart from `"x"` at any position, and SPARQL `unnest-index-filter`, whose
+  `FILTER(?v >= 90)` should drop the `"high"` row that rdflib's ordering of a string against a
+  number keeps (the SPARQL-array section above).
 - [json-ld-api-contrib](https://github.com/rdf-array/json-ld-api-contrib) `toRdf` and `fromRdf`
   through `test/jsonld/test_rdf_array_contrib.py` and the JSON-LD runner: all 18 pass. The
   JSON-LD-array tests (`array-manifest.jsonld`) need a JSON-LD-array processor and are not copied.
@@ -117,8 +187,10 @@ Docker). The W3C report files in `test_reports/` were not regenerated.
 
 - RDF/XML, TriX and HexTuples refuse a graph holding a sequence term rather than inventing a form
   for it; their parsers are unchanged.
-- SPARQL: no position patterns (`((e))[i]`, `[?i]`, `[*]`) and no functions over sequences
-  (`isSEQ`, `SEQLEN`, `SEQ`, `x[i]`).
+- SPARQL: no aggregate builds a sequence from solutions (the `COLLECT` array-syntax.md §6 leaves
+  open), and `?s[-1]` is an error rather than the last member. `algebra.translateAlgebra`, which
+  writes an algebra back as query text, does not know `Unnest`, `Index`, `Slice` or the sequence
+  functions.
 - JSON-LD has no node form for a sequence as a subject.
 - Stores other than `Memory` are untested with the new term (it is a `str`, so stores that key on
   the term's string form should hold it).

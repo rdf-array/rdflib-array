@@ -43,6 +43,7 @@ from rdflib.term import (
     Identifier,
     Literal,
     Node,
+    Sequence,
     URIRef,
     Variable,
 )
@@ -84,6 +85,103 @@ def Builtin_isNUMERIC(expr, ctx) -> Literal:
         return Literal(True)
     except:  # noqa: E722
         return Literal(False)
+
+
+# rdf-array: the functions over sequences
+
+
+def Builtin_isSEQ(expr: Expr, ctx) -> Literal:
+    """rdf-array: true for a sequence term"""
+    return Literal(isinstance(expr.arg, Sequence))
+
+
+def Builtin_SEQLEN(expr: Expr, ctx) -> Literal:
+    """rdf-array: the number of members of a sequence; an error for anything else"""
+    s = expr.arg
+    if not isinstance(s, Sequence):
+        raise SPARQLTypeError("SEQLEN of a non-sequence: %r" % s)
+    return Literal(len(s))
+
+
+def Builtin_SEQ(expr: Expr, ctx) -> Sequence:
+    """rdf-array: SEQ(e1, ..., en) is the sequence of the arguments' values; SEQ() the
+    empty sequence; an argument in error is an error"""
+    raw = dict.__getitem__(expr, "arg")  # the unevaluated argument list
+    if raw == RDF.nil:
+        return Sequence()
+    args = expr.arg if isinstance(raw, (list, ParseResults)) else [expr.arg]
+    members = []
+    for x in args:
+        if isinstance(x, SPARQLError):
+            raise x
+        if not isinstance(x, Node):
+            raise SPARQLError("SEQ of a non-term: %r" % x)
+        members.append(x)
+    return Sequence(members)
+
+
+def _position(i: Any, what: str) -> int:
+    """rdf-array: an index or a slice end as a Python int, or a type error"""
+    if isinstance(i, SPARQLError):
+        raise i
+    n = numeric(i)
+    if not isinstance(n, int) or isinstance(n, bool):
+        raise SPARQLTypeError("%s is not an integer: %r" % (what, i))
+    return n
+
+
+def Index(expr: Expr, ctx) -> Node:
+    """rdf-array: e[i] is the i-th member of the sequence e, counting from 1. An index
+    out of range, or an e that is not a sequence, is an error, so a BIND leaves its
+    variable unbound."""
+    s = expr.expr
+    if not isinstance(s, Sequence):
+        raise SPARQLTypeError("Index of a non-sequence: %r" % s)
+    i = _position(expr.index, "an index")
+    if not 1 <= i <= len(s):
+        raise SPARQLError("Index %d out of range for a sequence of %d" % (i, len(s)))
+    return s[i - 1]
+
+
+def Slice(expr: Expr, ctx) -> Sequence:
+    """rdf-array: e[m...n] is the sequence of the members m to n, both included and
+    counting from 1; m defaults to 1 and n to the end. The range is clamped to the
+    sequence, so (4 5)[2...3] is (5) and ()[2...] is ()."""
+    s = expr.expr
+    if not isinstance(s, Sequence):
+        raise SPARQLTypeError("Slice of a non-sequence: %r" % s)
+    m = 1 if expr.start is None else _position(expr.start, "a slice start")
+    n = len(s) if expr.end is None else _position(expr.end, "a slice end")
+    if m < 1 or n < 0:
+        raise SPARQLError("Slice [%d...%d] outside a sequence's positions" % (m, n))
+    return Sequence(s.elements[m - 1 : n])
+
+
+def _sequenceEq(a: Any, b: Any) -> bool:
+    """rdf-array: the value equality `=` uses, over sequences too: two sequences are
+    equal when their members are, pairwise; a sequence equals no other term"""
+    if isinstance(a, SPARQLError):
+        raise a
+    if isinstance(b, SPARQLError):
+        raise b
+    if isinstance(a, Sequence) or isinstance(b, Sequence):
+        if not (isinstance(a, Sequence) and isinstance(b, Sequence)):
+            return False
+        return len(a) == len(b) and all(
+            _sequenceEq(x, y) for x, y in zip(a.elements, b.elements)
+        )
+    if not isinstance(a, Identifier) or not isinstance(b, Identifier):
+        raise SPARQLError(
+            "I cannot compare this non-node: %r"
+            % (a if not isinstance(a, Identifier) else b)
+        )
+    try:
+        r = a.eq(b)
+    except TypeError as te:
+        raise SPARQLError(*te.args)
+    if r is NotImplemented:
+        raise SPARQLError("Error when comparing")
+    return bool(r)
 
 
 def Builtin_BNODE(expr, ctx) -> BNode:
@@ -873,6 +971,33 @@ def RelationalExpression(e: Expr, ctx: Union[QueryContext, FrozenBindings]) -> L
             ("NOT IN", lambda x, y: not pyop.contains(x, y)),
         ]
     )
+
+    # rdf-array: `?x IN ?seq` is true when some member of the sequence equals ?x, by the
+    # value equality of `=` (sequences included); a right-hand side that is not a
+    # sequence is an error
+    if op in ("IN SEQ", "NOT IN SEQ"):
+        if isinstance(expr, SPARQLError):
+            raise expr
+        if isinstance(other, SPARQLError):
+            raise other
+        if not isinstance(other, Sequence):
+            raise SPARQLTypeError("IN over a non-sequence: %r" % other)
+        seq_error: Optional[SPARQLError] = None
+        for member in other.elements:
+            try:
+                if _sequenceEq(expr, member):
+                    return Literal(op == "IN SEQ")
+            except SPARQLError as e:
+                seq_error = e
+        if seq_error is not None:
+            raise seq_error
+        return Literal(op != "IN SEQ")
+
+    # rdf-array: `=` and `!=` compare whole sequences, members included
+    if op in ("=", "!=") and (
+        isinstance(expr, Sequence) or isinstance(other, Sequence)
+    ):
+        return Literal(_sequenceEq(expr, other) == (op == "="))
 
     if op in ("IN", "NOT IN"):
         res = op == "NOT IN"

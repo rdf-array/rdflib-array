@@ -30,7 +30,7 @@ from rdflib.compat import decodeUnicodeEscape
 
 from . import operators as op
 from .pyparsing_compat import DelimitedList, combine_join_kwargs, rest_of_line
-from .parserutils import Comp, CompValue, Param, ParamList
+from .parserutils import Comp, CompValue, Expr, Gap, Param, ParamList
 
 # from pyparsing import Keyword as CaseSensitiveKeyword
 
@@ -172,6 +172,22 @@ def expandCollection(terms: ParseResults) -> list[Any]:
     if DEBUG:
         print("CollectionOut", seq, other)
     return [[seq] + other] if other else [seq]
+
+
+def expandPostfix(terms: ParseResults) -> Any:
+    """
+    rdf-array: fold an expression's postfix suffixes, ``e[i]`` and ``e[m...n]``,
+    into nested Index and Slice expressions, innermost first.
+    """
+    base = terms[0]
+    for suffix in terms[1:]:
+        if suffix.name == "Index":
+            base = Expr("Index", op.Index, expr=base, index=suffix.index)
+        else:
+            base = Expr(
+                "Slice", op.Slice, expr=base, start=suffix.start, end=suffix.end
+            )
+    return base
 
 
 # SPARQL Grammar from http://www.w3.org/TR/sparql11-query/#grammar
@@ -561,8 +577,22 @@ GroupGraphPattern = Forward()
 Collection = Suppress("(") + OneOrMore(GraphNode) + Suppress(")")
 Collection.set_parse_action(expandCollection)
 
+# rdf-array: inside a sequence pattern (WHERE only), `...` is a gap matching any run of
+# members and `...?rest`, one token with no space, a named gap binding the run to ?rest.
+# `( ?a ... ?b )` is a gap and then the member ?b; `( ?a ...?b )` is a named gap. The
+# gap is tried before a member, so `1...` is 1 and a gap and `:a...` is :a and a gap (a
+# local name cannot end in `.`), while `:a...b` stays one prefixed name.
+NamedGap = Suppress("...") + Var.copy().leave_whitespace()
+NamedGap.set_parse_action(lambda x: Gap(x[0]))
+AnonymousGap = Literal("...")
+AnonymousGap.set_parse_action(lambda x: Gap())
+
+# rdf-array: SeqMemberPath ::= GraphNodePath | '...' | GAPVAR
+SeqMemberPath = NamedGap | AnonymousGap | GraphNodePath
+
 # [103] CollectionPath ::= '(' OneOrMore(GraphNodePath) ')'
-CollectionPath = Suppress("(") + OneOrMore(GraphNodePath) + Suppress(")")
+# rdf-array: '(' SeqMemberPath+ ')' -- a pattern may hold gaps; a template (Collection) may not
+CollectionPath = Suppress("(") + OneOrMore(SeqMemberPath) + Suppress(")")
 CollectionPath.set_parse_action(expandCollection)
 
 # [80] Object ::= GraphNode
@@ -672,6 +702,36 @@ Expression = Forward()
 
 # [72] ExpressionList ::= NIL | '(' Expression ( ',' Expression )* ')'
 ExpressionList = NIL | Group(Suppress("(") + DelimitedList(Expression) + Suppress(")"))
+
+# rdf-array: the postfix suffixes of an expression. `e[i]` is the i-th member, counting
+# from 1; `e[m...n]` the members m to n, both included, `e[m...]` from m on and `e[...n]`
+# the first n (a slice is clamped to the sequence; `[...]` alone is not allowed). `...`
+# is read before a decimal, so `[2...4]` is 2, `...`, 4; `[2:4]` is a syntax error, since
+# `:4` is a prefixed name.
+IndexSuffix = Comp("Index", Suppress("[") + Param("index", Expression) + Suppress("]"))
+SliceSuffix = Comp(
+    "Slice",
+    Suppress("[")
+    + (
+        Param("start", Expression)
+        + Suppress("...")
+        + Optional(Param("end", Expression))
+        | Suppress("...") + Param("end", Expression)
+    )
+    + Suppress("]"),
+)
+PostfixSuffix = SliceSuffix | IndexSuffix
+
+# rdf-array: 'SEQ' ExpressionList builds a sequence of its arguments' values
+SeqCall = Comp("Builtin_SEQ", Keyword("SEQ") + Param("arg", ExpressionList)).setEvalFn(
+    op.Builtin_SEQ
+)
+
+# rdf-array: SeqRef ::= Var | 'SEQ' ExpressionList | SeqRef '[' Expression ']'
+# the right-hand side of `IN` other than an ExpressionList: a variable, a SEQ(...) call or
+# an indexed (or sliced) one of these, so that `IN (` still opens an expression list
+SeqRef = (Var | SeqCall) + ZeroOrMore(PostfixSuffix)
+SeqRef.set_parse_action(expandPostfix)
 
 # [122] RegexExpression ::= 'REGEX' '(' Expression ',' Expression ( ',' Expression )? ')'
 RegexExpression = Comp(
@@ -1022,6 +1082,14 @@ BuiltInCall = (
     | Comp(
         "Builtin_isNUMERIC", Keyword("isNUMERIC") + "(" + Param("arg", Expression) + ")"
     ).setEvalFn(op.Builtin_isNUMERIC)
+    # rdf-array: SEQ(...), SEQLEN(e) and isSEQ(e)
+    | SeqCall
+    | Comp(
+        "Builtin_SEQLEN", Keyword("SEQLEN") + "(" + Param("arg", Expression) + ")"
+    ).setEvalFn(op.Builtin_SEQLEN)
+    | Comp(
+        "Builtin_isSEQ", Keyword("isSEQ") + "(" + Param("arg", Expression) + ")"
+    ).setEvalFn(op.Builtin_isSEQ)
     | RegexExpression
     | ExistsFunc
     | NotExistsFunc
@@ -1059,17 +1127,23 @@ PrimaryExpression = (
     | Var
 )
 
+# rdf-array: PostfixExpression ::= PrimaryExpression | PostfixExpression '[' Expression ']'
+# | PostfixExpression '[' Expression? '...' Expression? ']'
+PostfixExpression = PrimaryExpression + ZeroOrMore(PostfixSuffix)
+PostfixExpression.set_parse_action(expandPostfix)
+
 # [118] UnaryExpression ::= '!' PrimaryExpression
 # | '+' PrimaryExpression
 # | '-' PrimaryExpression
 # | PrimaryExpression
+# rdf-array: with PostfixExpression in place of PrimaryExpression
 UnaryExpression = (
-    Comp("UnaryNot", "!" + Param("expr", PrimaryExpression)).setEvalFn(op.UnaryNot)
-    | Comp("UnaryPlus", "+" + Param("expr", PrimaryExpression)).setEvalFn(op.UnaryPlus)
-    | Comp("UnaryMinus", "-" + Param("expr", PrimaryExpression)).setEvalFn(
+    Comp("UnaryNot", "!" + Param("expr", PostfixExpression)).setEvalFn(op.UnaryNot)
+    | Comp("UnaryPlus", "+" + Param("expr", PostfixExpression)).setEvalFn(op.UnaryPlus)
+    | Comp("UnaryMinus", "-" + Param("expr", PostfixExpression)).setEvalFn(
         op.UnaryMinus
     )
-    | PrimaryExpression
+    | PostfixExpression
 )
 
 # [117] MultiplicativeExpression ::= UnaryExpression ( '*' UnaryExpression | '/' UnaryExpression )*
@@ -1125,6 +1199,19 @@ RelationalExpression = Comp(
             ),
         )
         + Param("other", ExpressionList)
+        # rdf-array: `?x IN ?seq` and `?x NOT IN ?seq` test membership of a sequence;
+        # `IN ( ... )` keeps its SPARQL 1.1 meaning, a list of expressions
+        | Param("op", Keyword("IN").set_parse_action(lambda: "IN SEQ"))
+        + Param("other", SeqRef)
+        | Param(
+            "op",
+            Combine(
+                Keyword("NOT") + Keyword("IN"),
+                adjacent=False,
+                **combine_join_kwargs(" "),
+            ).set_parse_action(lambda: "NOT IN SEQ"),
+        )
+        + Param("other", SeqRef)
     ),
 ).setEvalFn(op.RelationalExpression)
 
@@ -1349,10 +1436,24 @@ Bind = Comp(
     + ")",
 )
 
+# rdf-array: 'UNNEST' '(' Expression 'AS' Var ( 'AT' Var )? ')' -- one solution per member
+# of the sequence the expression evaluates to, ?x the member and ?i its 1-based position
+Unnest = Comp(
+    "Unnest",
+    Keyword("UNNEST")
+    + "("
+    + Param("expr", Expression)
+    + Keyword("AS")
+    + Param("var", Var)
+    + Optional(Keyword("AT") + Param("at", Var))
+    + ")",
+)
+
 # [61] InlineData ::= 'VALUES' DataBlock
 InlineData = Comp("InlineData", Keyword("VALUES") + DataBlock)
 
 # [56] GraphPatternNotTriples ::= GroupOrUnionGraphPattern | OptionalGraphPattern | MinusGraphPattern | GraphGraphPattern | ServiceGraphPattern | Filter | Bind | InlineData
+# rdf-array: | Unnest
 GraphPatternNotTriples = (
     GroupOrUnionGraphPattern
     | OptionalGraphPattern
@@ -1361,6 +1462,7 @@ GraphPatternNotTriples = (
     | ServiceGraphPattern
     | Filter
     | Bind
+    | Unnest
     | InlineData
 )
 

@@ -42,7 +42,7 @@ from rdflib.plugins.sparql.evalutils import (
     _minus,
     _val,
 )
-from rdflib.plugins.sparql.parserutils import CompValue, value
+from rdflib.plugins.sparql.parserutils import CompValue, Gap, value
 from rdflib.plugins.sparql.sparql import (
     AlreadyBound,
     FrozenBindings,
@@ -71,27 +71,60 @@ _Triple = tuple[Identifier, Identifier, Identifier]
 
 def _groundSequence(ctx: QueryContext, x: Any) -> Any:
     """rdf-array: a sequence pattern with its bound variables substituted, or None
-    when a variable (or a blank node, a variable in a pattern) is still free"""
+    when a variable (or a blank node, a variable in a pattern) is still free or
+    the pattern holds a gap"""
+    if isinstance(x, Gap):
+        return None
     if isinstance(x, Sequence):
         elements = [_groundSequence(ctx, e) for e in x.elements]
         return None if None in elements else Sequence(elements)
     return ctx[x]
 
 
-def _unifySequence(ctx: QueryContext, pattern: Any, term: Any) -> bool:
-    """rdf-array: bind the free variables of a sequence pattern to the matching
-    elements of a data term; False when the term does not fit the pattern"""
+def _matchTerm(
+    ctx: QueryContext, pattern: Any, term: Any
+) -> Generator[QueryContext, None, None]:
+    """rdf-array: the contexts in which a pattern term matches a data term, with
+    the pattern's free variables bound to the matching elements. A pattern with
+    no gap matches in at most one way; a gap matches any run of members, so a
+    pattern with gaps may match in several."""
     if isinstance(pattern, (Variable, BNode)):
         bound = ctx[pattern]
         if bound is None:
-            ctx[pattern] = term
-            return True
-        return bound == term
-    if isinstance(pattern, Sequence):
-        if not isinstance(term, Sequence) or len(term) != len(pattern):
-            return False
-        return all(_unifySequence(ctx, p, t) for p, t in zip(pattern.elements, term.elements))
-    return pattern == term
+            c = ctx.push()
+            c[pattern] = term
+            yield c
+        elif bound == term:
+            yield ctx
+    elif isinstance(pattern, Sequence):
+        if isinstance(term, Sequence):
+            yield from _matchMembers(ctx, pattern.elements, 0, term.elements, 0)
+    elif pattern == term:
+        yield ctx
+
+
+def _matchMembers(
+    ctx: QueryContext, ps: tuple, i: int, ts: tuple, j: int
+) -> Generator[QueryContext, None, None]:
+    """rdf-array: match the pattern members ps[i:] against the data members ts[j:].
+    A gap takes every run length in turn; a named gap binds its variable to the
+    run, as a sequence, so a repeated name must match equal runs."""
+    if i == len(ps):
+        if j == len(ts):
+            yield ctx
+        return
+    p = ps[i]
+    if isinstance(p, Gap):
+        for k in range(j, len(ts) + 1):
+            if p.var is None:
+                yield from _matchMembers(ctx, ps, i + 1, ts, k)
+            else:
+                for c in _matchTerm(ctx, p.var, Sequence(ts[j:k])):
+                    yield from _matchMembers(c, ps, i + 1, ts, k)
+        return
+    if j < len(ts):
+        for c in _matchTerm(ctx, p, ts[j]):
+            yield from _matchMembers(c, ps, i + 1, ts, j + 1)
 
 
 def evalBGP(
@@ -111,8 +144,9 @@ def evalBGP(
     _p = ctx[p]
     _o = ctx[o]
 
-    # rdf-array: a sequence holding variables matches the data's sequences of its
-    # shape, binding the variables to their elements
+    # rdf-array: a sequence holding variables or gaps matches the data's sequences
+    # of its shape, binding the variables to their elements (and a named gap to
+    # the run it matched), in every way it can
     open_s = isinstance(s, Sequence) and _groundSequence(ctx, s) is None
     open_o = isinstance(o, Sequence) and _groundSequence(ctx, o) is None
     if isinstance(s, Sequence) or isinstance(o, Sequence):
@@ -121,23 +155,18 @@ def evalBGP(
             _o = None if open_o else _groundSequence(ctx, o)
             for ss, sp, so in ctx.graph.triples((_s, _p, _o)):  # type: ignore[union-attr, arg-type]
                 c = ctx.push()
-                if open_s and not _unifySequence(c, s, ss):
-                    continue
                 if not open_s and _s is None:
                     c[s] = ss  # type: ignore[assignment]
                 try:
                     if _p is None:
                         c[p] = sp  # type: ignore[assignment]
-                except AlreadyBound:
-                    continue
-                if open_o and not _unifySequence(c, o, so):
-                    continue
-                try:
                     if not open_o and _o is None:
                         c[o] = so  # type: ignore[assignment]
                 except AlreadyBound:
                     continue
-                yield from evalBGP(c, bgp[1:])
+                for cs in _matchTerm(c, s, ss) if open_s else (c,):
+                    for co in _matchTerm(cs, o, so) if open_o else (cs,):
+                        yield from evalBGP(co, bgp[1:])
             return
         _s = _groundSequence(ctx, s)
         _o = _groundSequence(ctx, o)
@@ -187,6 +216,29 @@ def evalExtend(
 
         except SPARQLError:
             yield c
+
+
+def evalUnnest(
+    ctx: QueryContext, unnest: CompValue
+) -> Generator[FrozenBindings, None, None]:
+    """rdf-array: UNNEST(expr AS ?x AT ?i): one solution per member of the sequence
+    expr evaluates to, ?x the member and ?i its position counting from 1; no
+    solution when expr is unbound, in error or not a sequence. A member or
+    position variable bound already must agree, as in a join."""
+    for c in evalPart(ctx, unnest.p):
+        try:
+            seq = _eval(unnest.expr, c.forget(ctx, _except=unnest._vars))
+        except SPARQLError:
+            continue
+        if not isinstance(seq, Sequence):
+            continue
+        for i, member in enumerate(seq.elements, 1):
+            bindings = {unnest.var: member}
+            if unnest.at is not None:
+                bindings[unnest.at] = Literal(i)
+            if any(c.get(v) not in (None, val) for v, val in bindings.items()):
+                continue
+            yield c.merge(bindings)
 
 
 def evalLazyJoin(
@@ -355,6 +407,8 @@ def evalPart(ctx: QueryContext, part: CompValue) -> Any:
         return evalMultiset(ctx, part)
     elif part.name == "Extend":
         return evalExtend(ctx, part)
+    elif part.name == "Unnest":
+        return evalUnnest(ctx, part)
     elif part.name == "Minus":
         return evalMinus(ctx, part)
 
