@@ -313,6 +313,7 @@ from rdflib.term import (
     RDFLibGenid,
     URIRef,
     Sequence,
+    UNDEF,
 )
 
 if TYPE_CHECKING:
@@ -620,6 +621,7 @@ class Graph(Node):
         assert isinstance(s, Node), "Subject %s must be an rdflib term" % (s,)
         assert isinstance(p, Node), "Predicate %s must be an rdflib term" % (p,)
         assert isinstance(o, Node), "Object %s must be an rdflib term" % (o,)
+        _assertnode(s, p, o)
         self.__store.add((s, p, o), self, quoted=False)
         return self
 
@@ -3003,6 +3005,7 @@ class QuotedGraph(Graph):
         assert isinstance(s, Node), "Subject %s must be an rdflib term" % (s,)
         assert isinstance(p, Node), "Predicate %s must be an rdflib term" % (p,)
         assert isinstance(o, Node), "Object %s must be an rdflib term" % (o,)
+        _assertnode(s, p, o)
 
         self.store.add((s, p, o), self, quoted=True)
         return self
@@ -3330,6 +3333,8 @@ def _assertnode(*terms: Any) -> bool: ...
 def _assertnode(*terms: Any) -> bool:
     for t in terms:
         assert isinstance(t, Node), "Term %s must be an rdflib term" % (t,)
+        if t is UNDEF:  # rdf-array, rdf-undef: a slot is only an element of a sequence
+            raise ValueError("rdf-array: undef is only a member of a sequence, not a term of a triple")
     return True
 
 

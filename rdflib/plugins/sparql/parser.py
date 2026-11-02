@@ -573,8 +573,13 @@ ObjectListPath = ObjectPath + ZeroOrMore("," + ObjectPath)
 GroupGraphPattern = Forward()
 
 
+# rdf-array, rdf-undef: undef is the empty slot, as a member of a sequence and as an argument
+# of SEQ, and nowhere else. It is tried after a member, so undef:x stays a prefixed name.
+UndefSlot = Keyword("UNDEF").copy().set_parse_action(lambda: rdflib.term.UNDEF)
+
 # [102] Collection ::= '(' OneOrMore(GraphNode) ')'
-Collection = Suppress("(") + OneOrMore(GraphNode) + Suppress(")")
+# rdf-array, rdf-undef: a member may be undef
+Collection = Suppress("(") + OneOrMore(GraphNode | UndefSlot) + Suppress(")")
 Collection.set_parse_action(expandCollection)
 
 # rdf-array: inside a sequence pattern (WHERE only), `...` is a gap matching any run of
@@ -588,7 +593,7 @@ AnonymousGap = Literal("...")
 AnonymousGap.set_parse_action(lambda x: Gap())
 
 # rdf-array: SeqMemberPath ::= GraphNodePath | '...' | GAPVAR
-SeqMemberPath = NamedGap | AnonymousGap | GraphNodePath
+SeqMemberPath = NamedGap | AnonymousGap | GraphNodePath | UndefSlot
 
 # [103] CollectionPath ::= '(' OneOrMore(GraphNodePath) ')'
 # rdf-array: '(' SeqMemberPath+ ')' -- a pattern may hold gaps; a template (Collection) may not
@@ -722,8 +727,10 @@ SliceSuffix = Comp(
 )
 PostfixSuffix = SliceSuffix | IndexSuffix
 
-# rdf-array: 'SEQ' ExpressionList builds a sequence of its arguments' values
-SeqCall = Comp("Builtin_SEQ", Keyword("SEQ") + Param("arg", ExpressionList)).setEvalFn(
+# rdf-array: 'SEQ' ExpressionList builds a sequence of its arguments' values; a slot for undef or an unbound variable
+# (rdf-undef: an argument may be undef, which no other expression takes)
+SeqArgList = NIL | Group(Suppress("(") + DelimitedList(Expression | UndefSlot) + Suppress(")"))
+SeqCall = Comp("Builtin_SEQ", Keyword("SEQ") + Param("arg", SeqArgList)).setEvalFn(
     op.Builtin_SEQ
 )
 

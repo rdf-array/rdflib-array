@@ -37,6 +37,8 @@ __all__ = [
     "Literal",
     "Variable",
     "Sequence",
+    "UNDEF",
+    "Undef",
 ]
 import logging
 import math
@@ -2367,6 +2369,44 @@ class Variable(Identifier):
 
     def __reduce__(self) -> tuple[type[Variable], tuple[str]]:
         return (Variable, (str(self),))
+
+
+class Undef(Node):
+    """rdf-array, rdf-undef: the empty slot of a sequence, ``( 1 undef 3 )``.
+
+    A position with no value: an element of a Sequence and nothing else, so it is a
+    Node but not an Identifier, and Graph.add refuses it as a subject, predicate or
+    object. There is one object, ``UNDEF``, equal only to itself. It counts in a
+    sequence's length, and is not an unknown value: ``( 1 _:b )`` says there is
+    something at the second position, ``( 1 undef )`` that there is nothing.
+    """
+
+    __slots__ = ()
+
+    _instance: Optional[Undef] = None
+
+    def __new__(cls) -> Undef:
+        if Undef._instance is None:
+            Undef._instance = super().__new__(cls)
+        return Undef._instance
+
+    def n3(self, namespace_manager: Optional[NamespaceManager] = None) -> str:
+        return "undef"
+
+    def toPython(self) -> None:  # noqa: N802
+        return None
+
+    def __str__(self) -> str:
+        return "undef"
+
+    def __repr__(self) -> str:
+        return "rdflib.term.UNDEF"
+
+    def __reduce__(self) -> tuple[type[Undef], tuple[()]]:
+        return (Undef, ())
+
+
+UNDEF = Undef()
 
 
 class Sequence(Identifier):

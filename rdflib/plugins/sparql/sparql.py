@@ -17,7 +17,7 @@ import rdflib.plugins.sparql
 from rdflib.graph import ConjunctiveGraph, Dataset, Graph
 from rdflib.namespace import NamespaceManager
 from rdflib.plugins.sparql.parserutils import CompValue
-from rdflib.term import BNode, Identifier, Literal, Node, URIRef, Variable
+from rdflib.term import UNDEF, BNode, Identifier, Literal, Node, URIRef, Variable
 
 if TYPE_CHECKING:
     from rdflib.paths import Path
@@ -404,6 +404,8 @@ class QueryContext:
             return FrozenBindings(self, self.bindings.items())
 
     def __setitem__(self, key: str, value: str) -> None:
+        if value is UNDEF:  # rdf-array, rdf-undef: a variable is never bound to a slot
+            raise SPARQLError("A variable cannot be bound to an empty slot")
         if key in self.bindings and self.bindings[key] != value:
             raise AlreadyBound()
 

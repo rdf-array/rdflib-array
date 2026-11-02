@@ -51,7 +51,7 @@ from rdflib.plugins.sparql.sparql import (
     QueryContext,
     SPARQLError,
 )
-from rdflib.term import BNode, Identifier, Literal, Sequence, URIRef, Variable
+from rdflib.term import UNDEF, BNode, Identifier, Literal, Sequence, URIRef, Variable
 
 if TYPE_CHECKING:
     from rdflib.paths import Path
@@ -69,16 +69,14 @@ except ImportError:
 _Triple = tuple[Identifier, Identifier, Identifier]
 
 
-def _groundSequence(ctx: QueryContext, x: Any) -> Any:
-    """rdf-array: a sequence pattern with its bound variables substituted, or None
-    when a variable (or a blank node, a variable in a pattern) is still free or
-    the pattern holds a gap"""
-    if isinstance(x, Gap):
-        return None
+def _openSequence(x: Any) -> bool:
+    """rdf-array: does this sequence pattern hold a variable, a blank node (a variable
+    in a pattern) or a gap? Such a pattern is matched against the data's sequences and
+    never looked up by its substituted form: ( ?x ) with ?x bound also matches ( undef ),
+    so whether a variable is bound yet makes no difference here (rdf-undef)."""
     if isinstance(x, Sequence):
-        elements = [_groundSequence(ctx, e) for e in x.elements]
-        return None if None in elements else Sequence(elements)
-    return ctx[x]
+        return any(_openSequence(e) for e in x.elements)
+    return isinstance(x, (Variable, BNode, Gap))
 
 
 def _matchTerm(
@@ -87,8 +85,13 @@ def _matchTerm(
     """rdf-array: the contexts in which a pattern term matches a data term, with
     the pattern's free variables bound to the matching elements. A pattern with
     no gap matches in at most one way; a gap matches any run of members, so a
-    pattern with gaps may match in several."""
+    pattern with gaps may match in several. rdf-undef: a variable at an empty slot stays
+    as it is, bound or not, as with UNDEF in VALUES; any other pattern term matches a
+    slot only if it is undef itself."""
     if isinstance(pattern, (Variable, BNode)):
+        if term is UNDEF:
+            yield ctx
+            return
         bound = ctx[pattern]
         if bound is None:
             c = ctx.push()
@@ -147,29 +150,26 @@ def evalBGP(
     # rdf-array: a sequence holding variables or gaps matches the data's sequences
     # of its shape, binding the variables to their elements (and a named gap to
     # the run it matched), in every way it can
-    open_s = isinstance(s, Sequence) and _groundSequence(ctx, s) is None
-    open_o = isinstance(o, Sequence) and _groundSequence(ctx, o) is None
-    if isinstance(s, Sequence) or isinstance(o, Sequence):
-        if open_s or open_o:
-            _s = None if open_s else _groundSequence(ctx, s)
-            _o = None if open_o else _groundSequence(ctx, o)
-            for ss, sp, so in ctx.graph.triples((_s, _p, _o)):  # type: ignore[union-attr, arg-type]
-                c = ctx.push()
-                if not open_s and _s is None:
-                    c[s] = ss  # type: ignore[assignment]
-                try:
-                    if _p is None:
-                        c[p] = sp  # type: ignore[assignment]
-                    if not open_o and _o is None:
-                        c[o] = so  # type: ignore[assignment]
-                except AlreadyBound:
-                    continue
-                for cs in _matchTerm(c, s, ss) if open_s else (c,):
-                    for co in _matchTerm(cs, o, so) if open_o else (cs,):
-                        yield from evalBGP(co, bgp[1:])
-            return
-        _s = _groundSequence(ctx, s)
-        _o = _groundSequence(ctx, o)
+    open_s = isinstance(s, Sequence) and _openSequence(s)
+    open_o = isinstance(o, Sequence) and _openSequence(o)
+    if open_s or open_o:
+        _s = None if open_s else _s
+        _o = None if open_o else _o
+        for ss, sp, so in ctx.graph.triples((_s, _p, _o)):  # type: ignore[union-attr, arg-type]
+            c = ctx.push()
+            if not open_s and _s is None:
+                c[s] = ss  # type: ignore[assignment]
+            try:
+                if _p is None:
+                    c[p] = sp  # type: ignore[assignment]
+                if not open_o and _o is None:
+                    c[o] = so  # type: ignore[assignment]
+            except AlreadyBound:
+                continue
+            for cs in _matchTerm(c, s, ss) if open_s else (c,):
+                for co in _matchTerm(cs, o, so) if open_o else (cs,):
+                    yield from evalBGP(co, bgp[1:])
+        return
 
     # type error: Item "None" of "Optional[Graph]" has no attribute "triples"
     # type Argument 1 to "triples" of "Graph" has incompatible type "tuple[Union[str, Path, None], Union[str, Path, None], Union[str, Path, None]]"; expected "tuple[Optional[Node], Optional[Node], Optional[Node]]"
@@ -224,7 +224,8 @@ def evalUnnest(
     """rdf-array: UNNEST(expr AS ?x AT ?i): one solution per member of the sequence
     expr evaluates to, ?x the member and ?i its position counting from 1; no
     solution when expr is unbound, in error or not a sequence. A member or
-    position variable bound already must agree, as in a join."""
+    position variable bound already must agree, as in a join; a slot leaves the member
+    variable as it is."""
     for c in evalPart(ctx, unnest.p):
         try:
             seq = _eval(unnest.expr, c.forget(ctx, _except=unnest._vars))
@@ -233,7 +234,8 @@ def evalUnnest(
         if not isinstance(seq, Sequence):
             continue
         for i, member in enumerate(seq.elements, 1):
-            bindings = {unnest.var: member}
+            # rdf-undef: a solution at an empty slot too, with the member unbound
+            bindings = {} if member is UNDEF else {unnest.var: member}
             if unnest.at is not None:
                 bindings[unnest.at] = Literal(i)
             if any(c.get(v) not in (None, val) for v, val in bindings.items()):

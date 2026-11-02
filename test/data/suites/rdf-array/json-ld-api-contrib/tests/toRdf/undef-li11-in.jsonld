@@ -1,0 +1,10 @@
+{
+  "@context": {
+    "p": {
+      "@id": "http://ex.org/p",
+      "@container": "@list"
+    }
+  },
+  "@id": "http://ex.org/s",
+  "p": null
+}

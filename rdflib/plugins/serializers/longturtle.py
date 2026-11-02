@@ -25,7 +25,7 @@ from rdflib.compare import to_canonical_graph
 from rdflib.exceptions import Error
 from rdflib.graph import Graph, _TripleType
 from rdflib.namespace import RDF
-from rdflib.term import BNode, Literal, Sequence, URIRef
+from rdflib.term import UNDEF, BNode, Literal, Sequence, URIRef
 
 from .turtle import RecursiveSerializer, _sequence_leaves
 
@@ -286,6 +286,8 @@ class LongTurtleSerializer(RecursiveSerializer):
         return True
 
     def label(self, node, position):
+        if node is UNDEF:  # rdf-array, rdf-undef: the empty slot of a sequence
+            return "undef"
         if isinstance(node, Sequence):  # rdf-array: a sequence writes as a collection of its elements
             return "(" + " ".join(self.label(e, OBJECT) for e in node.elements) + ")"
         # (rdf-array: rdf:nil is written as the IRI it is; "()" is the empty sequence)

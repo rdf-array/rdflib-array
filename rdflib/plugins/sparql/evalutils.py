@@ -18,7 +18,7 @@ from rdflib.plugins.sparql.sparql import (
     QueryContext,
     SPARQLError,
 )
-from rdflib.term import BNode, Identifier, Literal, Sequence, URIRef, Variable
+from rdflib.term import UNDEF, BNode, Identifier, Literal, Sequence, URIRef, Variable
 
 _ContextType = Union[FrozenBindings, QueryContext]
 _FrozenDictT = TypeVar("_FrozenDictT", bound=FrozenDict)
@@ -158,10 +158,10 @@ def _fillTemplate(
         if isinstance(x, BNode):
             return bnodeMap[x]
         if isinstance(x, Sequence):
-            # rdf-array: a template sequence is filled element by element, and is
-            # unbound when one of its elements is
+            # rdf-array: a template sequence is filled element by element; an unbound
+            # variable in it writes an empty slot (rdf-undef)
             elements = [fill(e) for e in x.elements]
-            return None if None in elements else Sequence(elements)
+            return Sequence(UNDEF if e is None else e for e in elements)
         return solution.get(x)
 
     for t in template:
@@ -176,6 +176,8 @@ _ValueT = TypeVar("_ValueT", Variable, BNode, URIRef, Literal)
 
 def _val(v: _ValueT) -> tuple[int, _ValueT]:
     """utilitity for ordering things"""
+    if v is UNDEF:  # rdf-undef: a slot sorts before every term, member by member
+        return (-1,)  # type: ignore[return-value]
     if isinstance(v, Variable):
         return (0, v)
     elif isinstance(v, BNode):

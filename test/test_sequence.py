@@ -439,7 +439,7 @@ class TestArraySyntax:
         # a right-hand side that is not a sequence, or unbound, is an error
         assert rows(g, "SELECT ?o { :s :q ?o FILTER(?o IN ?o) }") == []
         assert rows(g, "SELECT ?o { :s :q ?o FILTER(?o IN ?unbound) }") == []
-        assert rows(g, "SELECT ?o { :s :q ?o FILTER(?o IN SEQ(?o, ?unbound)) }") == []
+        assert rows(g, "SELECT ?o { :s :q ?o FILTER(?o IN SEQ(?o, 1/0)) }") == []
         # SPARQL 1.1 IN: a failing comparison is skipped when another matches
         assert rows(g, "SELECT ?o { :s :q ?o FILTER(?o IN SEQ(:x, 2)) }") == [(Literal(2),)]
 
@@ -487,8 +487,9 @@ class TestArraySyntax:
         assert rows(g, q) == [
             (Literal(True), Literal(False), Literal(2), None, seq("x", 2, seq(), AR.s), seq())
         ]
-        # an argument in error is an error; the keywords are case-insensitive
-        assert rows(g, "SELECT ?x ?l { :s :q ?l BIND(SEQ(1, ?unbound) AS ?x) }") == [(None, Literal("x"))]
+        # an argument in error is an error (rdf-undef: an unbound variable is a slot instead,
+        # test_undef.py and the undef-seq-* contrib cases); the keywords are case-insensitive
+        assert rows(g, "SELECT ?x ?l { :s :q ?l BIND(SEQ(1, 1/0) AS ?x) }") == [(None, Literal("x"))]
         assert rows(g, "SELECT ?x { BIND(seqlen(seq(1)) AS ?x) }") == [(Literal(1),)]
 
     def test_equality_of_sequences_is_by_value(self) -> None:

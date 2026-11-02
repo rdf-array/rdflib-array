@@ -30,7 +30,7 @@ from rdflib.plugins.sparql.datatypes import (
     XSD_Duration_DTs,
     type_promotion,
 )
-from rdflib.plugins.sparql.parserutils import CompValue, Expr
+from rdflib.plugins.sparql.parserutils import CompValue, Expr, value
 from rdflib.plugins.sparql.sparql import (
     FrozenBindings,
     QueryContext,
@@ -38,6 +38,7 @@ from rdflib.plugins.sparql.sparql import (
     SPARQLTypeError,
 )
 from rdflib.term import (
+    UNDEF,
     BNode,
     IdentifiedNode,
     Identifier,
@@ -105,13 +106,17 @@ def Builtin_SEQLEN(expr: Expr, ctx) -> Literal:
 
 def Builtin_SEQ(expr: Expr, ctx) -> Sequence:
     """rdf-array: SEQ(e1, ..., en) is the sequence of the arguments' values; SEQ() the
-    empty sequence; an argument in error is an error"""
+    empty sequence. An argument that is undef or an unbound variable is an empty slot;
+    any other error in an argument is an error"""
     raw = dict.__getitem__(expr, "arg")  # the unevaluated argument list
     if raw == RDF.nil:
         return Sequence()
-    args = expr.arg if isinstance(raw, (list, ParseResults)) else [expr.arg]
-    members = []
-    for x in args:
+    members: list[Node] = []
+    for arg in raw if isinstance(raw, (list, ParseResults)) else [raw]:
+        if arg is UNDEF or (isinstance(arg, Variable) and ctx.get(arg) is None):
+            members.append(UNDEF)
+            continue
+        x = value(ctx, arg)
         if isinstance(x, SPARQLError):
             raise x
         if not isinstance(x, Node):
@@ -140,6 +145,8 @@ def Index(expr: Expr, ctx) -> Node:
     i = _position(expr.index, "an index")
     if not 1 <= i <= len(s):
         raise SPARQLError("Index %d out of range for a sequence of %d" % (i, len(s)))
+    if s[i - 1] is UNDEF:  # rdf-undef: a slot holds no value, as out of range does not
+        raise SPARQLError("Index %d of a sequence is an empty slot" % i)
     return s[i - 1]
 
 
@@ -164,6 +171,8 @@ def _sequenceEq(a: Any, b: Any) -> bool:
         raise a
     if isinstance(b, SPARQLError):
         raise b
+    if a is UNDEF or b is UNDEF:  # rdf-undef: a slot equals a slot and no value, without error
+        return a is b
     if isinstance(a, Sequence) or isinstance(b, Sequence):
         if not (isinstance(a, Sequence) and isinstance(b, Sequence)):
             return False
@@ -984,6 +993,8 @@ def RelationalExpression(e: Expr, ctx: Union[QueryContext, FrozenBindings]) -> L
             raise SPARQLTypeError("IN over a non-sequence: %r" % other)
         seq_error: Optional[SPARQLError] = None
         for member in other.elements:
+            if member is UNDEF:  # rdf-undef: IN looks at members, and a slot has none
+                continue
             try:
                 if _sequenceEq(expr, member):
                     return Literal(op == "IN SEQ")

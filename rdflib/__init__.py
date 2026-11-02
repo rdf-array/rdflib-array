@@ -64,6 +64,7 @@ __all__ = [
     "Node",
     "Variable",
     "Sequence",
+    "UNDEF",
     "Namespace",
     "Dataset",
     "Graph",
@@ -201,7 +202,7 @@ from rdflib.namespace import (
     XSD,
     Namespace,
 )
-from rdflib.term import BNode, IdentifiedNode, Literal, Node, Sequence, URIRef, Variable
+from rdflib.term import UNDEF, BNode, IdentifiedNode, Literal, Node, Sequence, URIRef, Variable
 
 from rdflib import plugin, query, util  # isort:skip
 from rdflib.container import *  # isort:skip # noqa: F403

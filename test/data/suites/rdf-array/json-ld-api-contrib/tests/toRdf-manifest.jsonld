@@ -2,7 +2,13 @@
   "@context": [
     "https://w3c.github.io/json-ld-api/tests/context.jsonld",
     {
-      "@base": "toRdf-manifest"
+      "@base": "toRdf-manifest",
+      "ra": "https://rdf-array.github.io/rdf-array/vocab#",
+      "undefSlots": "ra:undefSlots",
+      "requires": {
+        "@id": "mf:requires",
+        "@type": "@id"
+      }
     }
   ],
   "@id": "",
@@ -191,6 +197,198 @@
       "expect": "toRdf/li13-out.nq",
       "option": {
         "specVersion": "json-ld-1.1"
+      }
+    },
+    {
+      "@id": "#tundef-li01",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:ToRDFTest"
+      ],
+      "name": "undef-li01",
+      "requires": "ra:UndefSlots",
+      "purpose": "rdf-undef: a null in a @list is a slot",
+      "input": "toRdf/undef-li01-in.jsonld",
+      "expect": "toRdf/undef-li01-out.nq",
+      "option": {
+        "specVersion": "json-ld-1.1",
+        "undefSlots": true
+      }
+    },
+    {
+      "@id": "#tundef-li02",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:ToRDFTest"
+      ],
+      "name": "undef-li02",
+      "requires": "ra:UndefSlots",
+      "purpose": "rdf-undef: a list of nothing but a null has length 1",
+      "input": "toRdf/undef-li02-in.jsonld",
+      "expect": "toRdf/undef-li02-out.nq",
+      "option": {
+        "specVersion": "json-ld-1.1",
+        "undefSlots": true
+      }
+    },
+    {
+      "@id": "#tundef-li03",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:ToRDFTest"
+      ],
+      "name": "undef-li03",
+      "requires": "ra:UndefSlots",
+      "purpose": "rdf-undef: two slots",
+      "input": "toRdf/undef-li03-in.jsonld",
+      "expect": "toRdf/undef-li03-out.nq",
+      "option": {
+        "specVersion": "json-ld-1.1",
+        "undefSlots": true
+      }
+    },
+    {
+      "@id": "#tundef-li04",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:ToRDFTest"
+      ],
+      "name": "undef-li04",
+      "requires": "ra:UndefSlots",
+      "purpose": "rdf-undef: a slot at depth",
+      "input": "toRdf/undef-li04-in.jsonld",
+      "expect": "toRdf/undef-li04-out.nq",
+      "option": {
+        "specVersion": "json-ld-1.1",
+        "undefSlots": true
+      }
+    },
+    {
+      "@id": "#tundef-li05",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:ToRDFTest"
+      ],
+      "name": "undef-li05",
+      "requires": "ra:UndefSlots",
+      "purpose": "rdf-undef: a null in the array of a @container @list term",
+      "input": "toRdf/undef-li05-in.jsonld",
+      "expect": "toRdf/undef-li05-out.nq",
+      "option": {
+        "specVersion": "json-ld-1.1",
+        "undefSlots": true
+      }
+    },
+    {
+      "@id": "#tundef-li06",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:ToRDFTest"
+      ],
+      "name": "undef-li06",
+      "requires": "ra:UndefSlots",
+      "purpose": "rdf-undef: a null in a nested array of a @container @list term",
+      "input": "toRdf/undef-li06-in.jsonld",
+      "expect": "toRdf/undef-li06-out.nq",
+      "option": {
+        "specVersion": "json-ld-1.1",
+        "undefSlots": true
+      }
+    },
+    {
+      "@id": "#tundef-li07",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:ToRDFTest"
+      ],
+      "name": "undef-li07",
+      "requires": "ra:UndefSlots",
+      "purpose": "rdf-undef: a slot in a named graph",
+      "input": "toRdf/undef-li07-in.jsonld",
+      "expect": "toRdf/undef-li07-out.nq",
+      "option": {
+        "specVersion": "json-ld-1.1",
+        "undefSlots": true
+      }
+    },
+    {
+      "@id": "#tundef-li08",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:ToRDFTest"
+      ],
+      "name": "undef-li08",
+      "requires": "ra:UndefSlots",
+      "purpose": "rdf-undef: the @id after the list",
+      "input": "toRdf/undef-li08-in.jsonld",
+      "expect": "toRdf/undef-li08-out.nq",
+      "option": {
+        "specVersion": "json-ld-1.1",
+        "undefSlots": true
+      }
+    },
+    {
+      "@id": "#tundef-li09",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:ToRDFTest"
+      ],
+      "name": "undef-li09",
+      "requires": "ra:UndefSlots",
+      "purpose": "rdf-undef: a null that is not in a list is still dropped",
+      "input": "toRdf/undef-li09-in.jsonld",
+      "expect": "toRdf/undef-li09-out.nq",
+      "option": {
+        "specVersion": "json-ld-1.1",
+        "undefSlots": true
+      }
+    },
+    {
+      "@id": "#tundef-li10",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:ToRDFTest"
+      ],
+      "name": "undef-li10",
+      "requires": "ra:UndefSlots",
+      "purpose": "rdf-undef: a null value is still no value",
+      "input": "toRdf/undef-li10-in.jsonld",
+      "expect": "toRdf/undef-li10-out.nq",
+      "option": {
+        "specVersion": "json-ld-1.1",
+        "undefSlots": true
+      }
+    },
+    {
+      "@id": "#tundef-li11",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:ToRDFTest"
+      ],
+      "name": "undef-li11",
+      "requires": "ra:UndefSlots",
+      "purpose": "rdf-undef: a null value of a @container @list term is no value, not a list holding a null",
+      "input": "toRdf/undef-li11-in.jsonld",
+      "expect": "toRdf/undef-li11-out.nq",
+      "option": {
+        "specVersion": "json-ld-1.1",
+        "undefSlots": true
+      }
+    },
+    {
+      "@id": "#tundef-li12",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:ToRDFTest"
+      ],
+      "name": "undef-li12",
+      "requires": "ra:UndefSlots",
+      "purpose": "rdf-undef: a null value object is still dropped: only a null member is a slot",
+      "input": "toRdf/undef-li12-in.jsonld",
+      "expect": "toRdf/undef-li12-out.nq",
+      "option": {
+        "specVersion": "json-ld-1.1",
+        "undefSlots": true
       }
     }
   ]

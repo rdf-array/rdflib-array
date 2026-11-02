@@ -150,6 +150,7 @@ def do_test_parser(suite_base, cat, num, inputpath, expectedpath, context, optio
             base=options.get("base", input_uri),
             version=version,
             generalized_rdf=options.get("produceGeneralizedRdf", False),
+            undef_slots=options.get("undefSlots", False),
         )
     assert isomorphic(result_graph, expected_graph), "Expected:\n%s\nGot:\n%s" % (
         expected_graph.serialize(),
@@ -173,6 +174,7 @@ def do_test_serializer(suite_base, cat, num, inputpath, expectedpath, context, o
         base=input_uri,
         use_native_types=options.get("useNativeTypes", False),
         use_rdf_type=options.get("useRdfType", False),
+        undef_slots=options.get("undefSlots", False),
     )
     _compare_json(expected_json, result_json)
 
@@ -242,7 +244,8 @@ def _to_ordered(obj):
         # lists of e.g. bool, int, float.
         return sorted(
             (_to_ordered(lv) for lv in obj),
-            key=lambda x: (_ord_key(x), type(x).__name__),
+            # rdf-undef: a null, in a list with a slot, does not compare with the rest
+            key=lambda x: (x is None, _ord_key(x), type(x).__name__),
         )
     if not isinstance(obj, dict):
         return obj

@@ -1,0 +1,9 @@
+{
+  "http://ex.org/p": {
+    "@list": [
+      "a",
+      null
+    ]
+  },
+  "@id": "http://ex.org/s"
+}

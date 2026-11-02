@@ -183,6 +183,47 @@ Unrelated to rdf-array: `test/test_misc/test_plugins.py` installs a test plugin 
 Run the suite with `pytest -m "not webtest and not testcontainer"` (the rest needs the network or
 Docker). The W3C report files in `test_reports/` were not regenerated.
 
+## rdf-undef: empty slots
+
+On the `rdf-undef` branch a position in a sequence may be empty, `( 1 undef 3 )`, as
+[rdf-undef.md](https://github.com/rdf-array/rdf-array/blob/rdf-undef/docs/rdf-undef.md) specifies (§3's table is
+what the engine follows).
+
+- **Term.** `rdflib.term.UNDEF` (`from rdflib import UNDEF`), the one instance of `Undef`, a `Node` and not an
+  `Identifier`: `n3()` is `undef`, `toPython()` is `None`, and it is equal only to itself. It is a member of a
+  `Sequence` and nothing else: `Graph.add`, `addN` and `Dataset.add` raise `ValueError` for it in a triple, and
+  `QueryContext` refuses to bind it. `Graph.items(seq)` and `Collection` show it at its position.
+- **Syntaxes.** Turtle, TriG, N3, N-Triples and N-Quads read `undef`, in any case, as a member at any depth, and
+  writers emit it; `undef:x` stays a prefixed name and `:s :p undef` a syntax error. RDF/XML, TriX and HexTuples
+  already refuse any sequence. JSON-LD takes the option `undef_slots=True`, in `Graph.parse`, `Graph.serialize`, `to_rdf` and `from_rdf`: a `null` that is
+  a member of a list's array is a slot, and a slot is written as such a `null`. Other nulls stay dropped, and without the
+  option a `null` in a list is dropped, as JSON-LD 1.1 says, while serializing a slot raises an error naming the sequence.
+  Beside this, an array directly in `"@list"` is now a nested list (it was a string of its Python `repr`), and a `null` value
+  of a `@container: @list` term is now no value (it was `()`).
+- **SPARQL.** `undef` is a member in patterns, templates and `INSERT`/`DELETE DATA`, and an argument of `SEQ`; it is
+  not an expression. A sequence pattern with a variable, a blank node or a gap in it is matched against the data's
+  sequences and never looked up by its substituted form (`_openSequence`), since `( ?x )` with `?x` bound also
+  matches `( undef )`. In `_matchTerm` a variable at a slot stays as it is, and any other pattern term matches a slot
+  only if it is `undef`. rdflib has no fixed-variables analysis and places filters at the end of their group, so
+  nothing further needed changing for joins, `OPTIONAL` or filters. `UNNEST` gives a solution at a slot with the
+  member unbound; `?s[i]` at a slot is an error; slices and named gaps keep slots; `SEQLEN` counts them; `IN` skips
+  them; `=` is false between a slot and a value. `SEQ` writes a slot for `undef` or an unbound variable, and any other
+  error is the error of the `SEQ`. An unbound variable in a template's sequence writes a slot; at the top of a
+  template it still drops the triple. `ORDER BY` puts a slot before every term, member by member.
+- **Results.** `{"type":"undef"}` in a JSON `seq` and `<unbound/>` in an XML `<seq>`, read and written; `undef` in a
+  CSV `( … )` cell (written) and in a TSV one (read). Each is refused outside a sequence.
+- **Status.** `pytest -m "not webtest and not testcontainer"`: 7697 pass, the same 2 `test_plugins.py` failures as
+  `rdf-sequences` (7506 pass there, run from a scratch worktree, where `test_chunk_serializer.py::test_chunk_by_size`
+  also fails with a `TypeError`; it passes here). New: `test/test_undef.py` (36). `test/data/suites/rdf-array/rdf-tests-contrib` is at rdf-undef commit
+  `3f13149`, with `test_rdf_array_contrib.py` at 256 pass and the same 2 `xfail` as above: all 138 `undef-*` cases
+  pass. `test_sequence.py`'s two uses of `SEQ(…, ?unbound)` as "an argument in error" now use `1/0`, since §3 makes the
+  unbound one a slot.
+- **JSON-LD status.** `test/data/suites/rdf-array/json-ld-api-contrib` is at rdf-undef commit `fc93023`, without its array,
+  expand, compact and flatten tests, which run in jsonld.js-array; its 12 toRdf tests, 3 fromRdf and 1 refused pass.
+  `test/test_undef.py` gains 4.
+- **Not yet.** ShEx and SHACL slots wait for rdf-undef.md §5's decisions. PyShEx-array, unchanged, reads a
+  slot-bearing sequence and a slot fails a member constraint (`LIST * xsd:integer` against `( 1 undef )`).
+
 ## Not done
 
 - RDF/XML, TriX and HexTuples refuse a graph holding a sequence term rather than inventing a form

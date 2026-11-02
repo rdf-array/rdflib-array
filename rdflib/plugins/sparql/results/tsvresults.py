@@ -11,6 +11,7 @@ import typing
 from typing import IO, Union
 
 from pyparsing import (
+    CaselessKeyword,
     FollowedBy,
     Forward,
     Group,
@@ -34,7 +35,7 @@ from rdflib.plugins.sparql.parser import (
 )
 from rdflib.plugins.sparql.parserutils import Comp, CompValue, Param
 from rdflib.query import Result, ResultParser
-from rdflib.term import BNode, Identifier, Sequence, URIRef
+from rdflib.term import UNDEF, BNode, Identifier, Sequence, URIRef
 from rdflib.term import Literal as RDFLiteral
 
 ParserElement.set_default_whitespace_chars(" \n")
@@ -66,7 +67,8 @@ class _SequenceTokens:
 
 SEQUENCE = Forward()
 TERM = RDFLITERAL | IRIREF | BLANK_NODE_LABEL | NumericLiteral | BooleanLiteral | SEQUENCE
-SEQUENCE <<= (Suppress("(") + Group(ZeroOrMore(TERM)) + Suppress(")")).set_parse_action(
+SLOT = CaselessKeyword("undef").set_parse_action(lambda: UNDEF)  # rdf-undef: only as a member
+SEQUENCE <<= (Suppress("(") + Group(ZeroOrMore(TERM | SLOT)) + Suppress(")")).set_parse_action(
     lambda tokens: [_SequenceTokens(list(tokens[0]))]
 )
 
@@ -118,6 +120,8 @@ class TSVResultParser(ResultParser):
     ) -> typing.Optional[Identifier]:
         if t is NONE_VALUE:
             return None
+        if t is UNDEF:
+            return t  # type: ignore[return-value]
         if isinstance(t, _SequenceTokens):
             return Sequence([self.convertTerm(e) for e in t.items])  # type: ignore[misc]
         if isinstance(t, CompValue):

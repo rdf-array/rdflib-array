@@ -2,7 +2,13 @@
   "@context": [
     "https://w3c.github.io/json-ld-api/tests/context.jsonld",
     {
-      "@base": "fromRdf-manifest"
+      "@base": "fromRdf-manifest",
+      "ra": "https://rdf-array.github.io/rdf-array/vocab#",
+      "undefSlots": "ra:undefSlots",
+      "requires": {
+        "@id": "mf:requires",
+        "@type": "@id"
+      }
     }
   ],
   "@id": "",
@@ -77,6 +83,69 @@
       "purpose": "rdf-array: a sequence in a named graph",
       "input": "fromRdf/seq05-in.nq",
       "expect": "fromRdf/seq05-out.jsonld",
+      "option": {
+        "specVersion": "json-ld-1.1"
+      }
+    },
+    {
+      "@id": "#tundef-seq01",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:FromRDFTest"
+      ],
+      "name": "undef-seq01",
+      "requires": "ra:UndefSlots",
+      "purpose": "rdf-undef: a slot is a null in the @list",
+      "input": "fromRdf/undef-seq01-in.nq",
+      "expect": "fromRdf/undef-seq01-out.jsonld",
+      "option": {
+        "specVersion": "json-ld-1.1",
+        "undefSlots": true
+      }
+    },
+    {
+      "@id": "#tundef-seq02",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:FromRDFTest"
+      ],
+      "name": "undef-seq02",
+      "requires": "ra:UndefSlots",
+      "purpose": "rdf-undef: a list holding only a null",
+      "input": "fromRdf/undef-seq02-in.nq",
+      "expect": "fromRdf/undef-seq02-out.jsonld",
+      "option": {
+        "specVersion": "json-ld-1.1",
+        "undefSlots": true
+      }
+    },
+    {
+      "@id": "#tundef-seq03",
+      "@type": [
+        "jld:PositiveEvaluationTest",
+        "jld:FromRDFTest"
+      ],
+      "name": "undef-seq03",
+      "requires": "ra:UndefSlots",
+      "purpose": "rdf-undef: a slot at depth",
+      "input": "fromRdf/undef-seq03-in.nq",
+      "expect": "fromRdf/undef-seq03-out.jsonld",
+      "option": {
+        "specVersion": "json-ld-1.1",
+        "undefSlots": true
+      }
+    },
+    {
+      "@id": "#tundef-seq-refused",
+      "@type": [
+        "jld:NegativeEvaluationTest",
+        "jld:FromRDFTest"
+      ],
+      "name": "undef-seq-refused",
+      "requires": "ra:UndefSlots",
+      "purpose": "rdf-undef: without the option a sequence holding a slot is refused: JSON-LD 1.1 would drop the null",
+      "input": "fromRdf/undef-seq-refused-in.nq",
+      "expectErrorCode": "empty slot",
       "option": {
         "specVersion": "json-ld-1.1"
       }

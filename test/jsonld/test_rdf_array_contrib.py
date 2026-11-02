@@ -26,6 +26,8 @@ def cases() -> list[Any]:
     for direction, func in MANIFESTS.items():
         manifest = json.loads((TESTS_DIR / f"{direction}-manifest.jsonld").read_text())
         for test in manifest["sequence"]:
+            if "expect" not in test:  # a negative test: test_contrib_refused
+                continue
             category, num = test["input"].split(".")[0].rsplit("-", 1)[0].split("/")
             params.append(
                 pytest.param(
@@ -40,3 +42,20 @@ def cases() -> list[Any]:
 def test_contrib(monkeypatch: MonkeyPatch, func, cat, num, inputpath, expectedpath, context, options) -> None:
     monkeypatch.chdir(TESTS_DIR)
     func(TC_BASE, cat, num, inputpath, expectedpath, context, options)
+
+
+def refused() -> list[Any]:
+    manifest = json.loads((TESTS_DIR / "fromRdf-manifest.jsonld").read_text())
+    return [
+        pytest.param(test["input"], id=f"fromRdf-manifest{test['@id']}")
+        for test in manifest["sequence"]
+        if "expect" not in test
+    ]
+
+
+@pytest.mark.parametrize("inputpath", refused())
+def test_contrib_refused(monkeypatch: MonkeyPatch, inputpath) -> None:
+    # rdf-undef: without the undefSlots option a sequence holding a slot has no JSON-LD form
+    monkeypatch.chdir(TESTS_DIR)
+    with pytest.raises(ValueError, match="undef"):
+        runner.from_rdf(runner._load_nquads(inputpath), None, base=TC_BASE + inputpath)

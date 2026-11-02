@@ -43,6 +43,7 @@ from rdflib.graph import Dataset, Graph
 from rdflib.namespace import RDF, XSD
 from rdflib.parser import InputSource, URLInputSource
 from rdflib.term import BNode, IdentifiedNode, Literal, Node, URIRef
+from rdflib.term import UNDEF as SLOT  # rdf-undef; this module's UNDEF is the JSON-LD context's
 from rdflib.term import Node, Sequence
 
 from ..shared.jsonld.context import UNDEF, Context, Term
@@ -133,6 +134,7 @@ class JsonLDParser(rdflib.parser.Parser):
         ] = None,
         generalized_rdf: Optional[bool] = False,
         extract_all_scripts: Optional[bool] = False,
+        undef_slots: Optional[bool] = False,
         **kwargs: Any,
     ) -> None:
         """Parse JSON-LD from a source document.
@@ -204,6 +206,7 @@ class JsonLDParser(rdflib.parser.Parser):
             version,
             bool(generalized_rdf),
             skolemize=skolemize,
+            undef_slots=bool(undef_slots),
         )
 
 
@@ -222,6 +225,7 @@ def to_rdf(
     generalized_rdf: bool = False,
     allow_lists_of_lists: Optional[bool] = None,
     skolemize: bool = False,
+    undef_slots: bool = False,
 ):
     # TODO: docstring w. args and return value
     context = Context(base=base, version=version)
@@ -231,6 +235,7 @@ def to_rdf(
         generalized_rdf=generalized_rdf,
         allow_lists_of_lists=allow_lists_of_lists,
         skolemize=skolemize,
+        undef_slots=undef_slots,
     )
     return parser.parse(data, context, dataset)
 
@@ -241,8 +246,11 @@ class Parser:
         generalized_rdf: bool = False,
         allow_lists_of_lists: Optional[bool] = None,
         skolemize: bool = False,
+        undef_slots: bool = False,
     ):
         self.skolemize = skolemize
+        # rdf-undef: a null that is a member of a list is the empty slot of the sequence
+        self.undef_slots = undef_slots
         self.generalized_rdf = generalized_rdf
         self.allow_lists_of_lists = (
             allow_lists_of_lists
@@ -390,7 +398,8 @@ class Parser:
             if term.type == JSON:
                 obj_nodes = [self._to_typed_json_value(obj)]
             elif LIST in term.container:
-                obj_nodes = [self._expand_nested_list(obj_nodes)]
+                # a null value is no value, not a list holding a null
+                obj_nodes = [] if obj is None else [self._expand_nested_list(obj_nodes)]
             elif isinstance(obj, dict):
                 obj_nodes = self._parse_container(context, term, obj)
         else:
@@ -691,6 +700,11 @@ class Parser:
         elements: list[Node] = []
         for node in node_list:
             if node is None:
+                if self.undef_slots:
+                    elements.append(SLOT)
+                continue
+            if isinstance(node, list):  # an array in a list is a list, as under @container @list
+                elements.append(self._add_list(dataset, graph, context, term, node))
                 continue
             obj = self._to_object(dataset, graph, context, term, node, inlist=True)
             if obj is not None:

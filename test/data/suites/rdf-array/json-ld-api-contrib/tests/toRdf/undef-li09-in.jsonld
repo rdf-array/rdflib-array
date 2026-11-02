@@ -1,0 +1,7 @@
+{
+  "@id": "http://ex.org/s",
+  "http://ex.org/p": [
+    "a",
+    null
+  ]
+}

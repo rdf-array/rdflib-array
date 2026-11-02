@@ -15,7 +15,7 @@ from collections.abc import Mapping, MutableSequence
 from typing import IO, Any, Optional
 
 from rdflib.query import Result, ResultException, ResultParser, ResultSerializer
-from rdflib.term import BNode, Identifier, Literal, Sequence, URIRef, Variable
+from rdflib.term import UNDEF, BNode, Identifier, Literal, Sequence, URIRef, Variable
 
 try:
     import orjson
@@ -147,7 +147,8 @@ def parseJsonTerm(d: dict[str, str]) -> Identifier:
         return BNode(d["value"])
     elif t == "seq":
         # rdf-array: {"type": "seq", "value": [ ...one term object per element... ]}
-        return Sequence([parseJsonTerm(e) for e in d["value"]])  # type: ignore[arg-type]
+        # rdf-undef: {"type": "undef"} is an empty slot, as a member and nowhere else
+        return Sequence([UNDEF if e["type"] == "undef" else parseJsonTerm(e) for e in d["value"]])  # type: ignore[arg-type]
     else:
         raise NotImplementedError("json term type %r" % t)
 
@@ -155,6 +156,8 @@ def parseJsonTerm(d: dict[str, str]) -> Identifier:
 def termToJSON(
     self: JSONResultSerializer, term: Optional[Identifier]
 ) -> Optional[dict[str, str]]:
+    if term is UNDEF:  # rdf-undef: an empty slot, as a member of a seq
+        return {"type": "undef"}
     if isinstance(term, Sequence):
         # rdf-array: {"type": "seq", "value": [ ...one term object per element... ]}
         return {"type": "seq", "value": [termToJSON(self, e) for e in term]}  # type: ignore[dict-item]

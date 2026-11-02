@@ -26,7 +26,7 @@ from rdflib.parser import InputSource, Parser
 from rdflib.term import BNode as bNode
 from rdflib.term import Literal, URIRef
 from rdflib.term import URIRef as URI  # noqa: N814
-from rdflib.term import Sequence
+from rdflib.term import UNDEF, Sequence
 
 if TYPE_CHECKING:
     import typing_extensions as te
@@ -52,6 +52,7 @@ r_wspaces = re.compile(r"[ \t]+")
 r_tail = re.compile(r"[ \t]*\.[ \t]*(#.*)?")
 r_lparen = re.compile(r"\(")
 r_rparen = re.compile(r"\)")
+r_undef = re.compile(r"undef(?=[ \t()]|$)", re.IGNORECASE)  # rdf-array, rdf-undef: only as a member
 r_uriref = re.compile(uriref)
 r_nodeid = re.compile(r"_:([A-Za-z0-9_:]([-A-Za-z0-9_:\.]*[-A-Za-z0-9_:])?)")
 r_literal = re.compile(literal + litinfo)
@@ -316,7 +317,12 @@ class W3CNTriplesParser:
                 return Sequence(elements)
             if not self.line:
                 raise ParseError("Unterminated sequence")
-            elements.append(self.object(bnode_context))
+            undef = r_undef.match(self.line)
+            if undef:
+                self.line = self.line[undef.end() :]
+                elements.append(UNDEF)
+            else:
+                elements.append(self.object(bnode_context))
 
     def uriref(self) -> Union[te.Literal[False], URI]:
         if self.peek("<"):

@@ -22,7 +22,7 @@ from rdflib.exceptions import Error
 from rdflib.graph import Graph
 from rdflib.namespace import RDF, RDFS
 from rdflib.serializer import Serializer
-from rdflib.term import BNode, Literal, Node, Sequence, URIRef
+from rdflib.term import UNDEF, BNode, Literal, Node, Sequence, URIRef
 
 _StrT = TypeVar("_StrT", bound=str)
 
@@ -446,6 +446,8 @@ class TurtleSerializer(RecursiveSerializer):
         return True
 
     def label(self, node: Node, position: int) -> str:
+        if node is UNDEF:  # rdf-array, rdf-undef: the empty slot of a sequence
+            return "undef"
         if isinstance(node, Sequence):
             # rdf-array: a sequence writes as a collection of its elements (path() normally
             # takes a sequence before it gets here; this serves callers that want a string)

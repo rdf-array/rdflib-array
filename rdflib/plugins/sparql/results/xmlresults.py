@@ -29,7 +29,7 @@ from xml.sax.saxutils import XMLGenerator
 from xml.sax.xmlreader import AttributesNSImpl
 
 from rdflib.query import Result, ResultException, ResultParser, ResultSerializer
-from rdflib.term import BNode, Identifier, Literal, Sequence, URIRef, Variable
+from rdflib.term import UNDEF, BNode, Identifier, Literal, Sequence, URIRef, Variable
 
 try:
     # https://adamj.eu/tech/2021/12/29/python-type-hints-optional-imports/
@@ -150,7 +150,12 @@ def parseTerm(element: xml_etree.Element) -> Union[URIRef, Literal, BNode]:
         return BNode(text)
     elif tag == RESULTS_NS_ET + "seq":
         # rdf-array: <seq> with one child element per element (comments skipped)
-        return Sequence([parseTerm(child) for child in element if isinstance(child.tag, str)])  # type: ignore[return-value]
+        # rdf-undef: <unbound/> is an empty slot, as a child of <seq> and nowhere else
+        return Sequence([
+            UNDEF if child.tag == RESULTS_NS_ET + "unbound" else parseTerm(child)
+            for child in element
+            if isinstance(child.tag, str)
+        ])  # type: ignore[return-value]
     else:
         raise TypeError("unknown binding type %r" % element)
 
@@ -265,7 +270,12 @@ class SPARQLXMLWriter:
         self.writer.endElementNS((SPARQL_XML_NAMESPACE, "binding"), "binding")
 
     def write_term(self, val: Identifier) -> None:
-        if isinstance(val, Sequence):
+        if val is UNDEF:  # rdf-undef: an empty slot, as a child of <seq>
+            self.writer.startElementNS(
+                (SPARQL_XML_NAMESPACE, "unbound"), "unbound", AttributesNSImpl({}, {})
+            )
+            self.writer.endElementNS((SPARQL_XML_NAMESPACE, "unbound"), "unbound")
+        elif isinstance(val, Sequence):
             # rdf-array: <seq> with one child element per element
             self.writer.startElementNS(
                 (SPARQL_XML_NAMESPACE, "seq"), "seq", AttributesNSImpl({}, {})

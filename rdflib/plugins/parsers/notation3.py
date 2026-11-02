@@ -53,6 +53,7 @@ from rdflib.compat import long_type
 from rdflib.exceptions import ParserError
 from rdflib.graph import Dataset, Graph, QuotedGraph
 from rdflib.term import (
+    UNDEF,
     _XSD_PFX,
     BNode,
     IdentifiedNode,
@@ -387,6 +388,8 @@ ws = re.compile(r"[ \t]*")  # Whitespace not including NL
 signed_integer = re.compile(r"[-+]?[0-9]+")  # integer
 integer_syntax = re.compile(r"[-+]?[0-9]+")
 decimal_syntax = re.compile(r"[-+]?[0-9]*\.[0-9]+")
+# rdf-array, rdf-undef: undef in any case; undef:x is a prefixed name and undefined no word
+undef_syntax = re.compile(r"undef(?![\w:.\-])", re.IGNORECASE)
 exponent_syntax = re.compile(
     r"[-+]?(?:[0-9]+\.[0-9]*|\.[0-9]+|[0-9]+)(?:e|E)[-+]?[0-9]+"
 )
@@ -1092,6 +1095,12 @@ class SinkParser:
                 if argstr[i] == ")":
                     j = i + 1
                     break
+
+                undef = undef_syntax.match(argstr, i)
+                if undef:  # rdf-array, rdf-undef: the empty slot, only as a member
+                    List.append(UNDEF)
+                    j = undef.end()
+                    continue
 
                 item = []
                 j = self.item(argstr, i, item)  # @@@@@ should be path, was object
