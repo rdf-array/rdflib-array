@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Optional, Union
 
 from rdflib import BNode, Graph, Literal, URIRef, paths
 from rdflib.collection import Collection
-from rdflib.namespace import RDF, SH
+from rdflib.namespace import SH
 from rdflib.paths import Path
 from rdflib.term import Node
 from rdflib.term import Sequence
@@ -55,15 +55,12 @@ def parse_shacl_path(
 
     # If a path is a URI, that's the whole path.
     elif isinstance(path_identifier, URIRef):
-        if path_identifier == RDF.nil:
-            raise SHACLPathError(
-                "A list of SHACL Paths must contain at least two path items."
-            )
         path = path_identifier
 
-    # Handle Sequence Paths: a sequence term (rdf-array), or a legacy rdf:first/rdf:rest ladder
-    elif isinstance(path_identifier, Sequence) or shapes_graph.value(path_identifier, RDF.first) is not None:
-        sequence = list(shapes_graph.items(path_identifier))
+    # Handle Sequence Paths. rdf-array: a sequence term; an rdf:first/rdf:rest ladder
+    # is triples, not a list (shacl-array.md).
+    elif isinstance(path_identifier, Sequence):
+        sequence = list(path_identifier.elements)
         if len(sequence) < 2:
             raise SHACLPathError(
                 "A list of SHACL Sequence Paths must contain at least two path items."
@@ -78,7 +75,11 @@ def parse_shacl_path(
 
     # Handle sh:alternativePath
     elif alternative_path := shapes_graph.value(path_identifier, SH.alternativePath):
-        alternatives = list(shapes_graph.items(alternative_path))
+        alternatives = (
+            list(alternative_path.elements)
+            if isinstance(alternative_path, Sequence)
+            else []
+        )
         if len(alternatives) < 2:
             raise SHACLPathError(
                 "List of SHACL alternate paths must have at least two path items."
