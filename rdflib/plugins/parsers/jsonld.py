@@ -134,7 +134,6 @@ class JsonLDParser(rdflib.parser.Parser):
         ] = None,
         generalized_rdf: Optional[bool] = False,
         extract_all_scripts: Optional[bool] = False,
-        undef_slots: Optional[bool] = False,
         **kwargs: Any,
     ) -> None:
         """Parse JSON-LD from a source document.
@@ -206,7 +205,6 @@ class JsonLDParser(rdflib.parser.Parser):
             version,
             bool(generalized_rdf),
             skolemize=skolemize,
-            undef_slots=bool(undef_slots),
         )
 
 
@@ -225,7 +223,6 @@ def to_rdf(
     generalized_rdf: bool = False,
     allow_lists_of_lists: Optional[bool] = None,
     skolemize: bool = False,
-    undef_slots: bool = False,
 ):
     # TODO: docstring w. args and return value
     context = Context(base=base, version=version)
@@ -235,7 +232,6 @@ def to_rdf(
         generalized_rdf=generalized_rdf,
         allow_lists_of_lists=allow_lists_of_lists,
         skolemize=skolemize,
-        undef_slots=undef_slots,
     )
     return parser.parse(data, context, dataset)
 
@@ -246,11 +242,8 @@ class Parser:
         generalized_rdf: bool = False,
         allow_lists_of_lists: Optional[bool] = None,
         skolemize: bool = False,
-        undef_slots: bool = False,
     ):
         self.skolemize = skolemize
-        # rdf-undef: a null that is a member of a list is the empty slot of the sequence
-        self.undef_slots = undef_slots
         self.generalized_rdf = generalized_rdf
         self.allow_lists_of_lists = (
             allow_lists_of_lists
@@ -700,8 +693,8 @@ class Parser:
         elements: list[Node] = []
         for node in node_list:
             if node is None:
-                if self.undef_slots:
-                    elements.append(SLOT)
+                # rdf-undef: a null that is a member of a list is the empty slot of the sequence
+                elements.append(SLOT)
                 continue
             if isinstance(node, list):  # an array in a list is a list, as under @container @list
                 elements.append(self._add_list(dataset, graph, context, term, node))

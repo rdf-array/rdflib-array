@@ -195,9 +195,8 @@ what the engine follows).
   `QueryContext` refuses to bind it. `Graph.items(seq)` and `Collection` show it at its position.
 - **Syntaxes.** Turtle, TriG, N3, N-Triples and N-Quads read `undef`, in any case, as a member at any depth, and
   writers emit it; `undef:x` stays a prefixed name and `:s :p undef` a syntax error. RDF/XML, TriX and HexTuples
-  already refuse any sequence. JSON-LD takes the option `undef_slots=True`, in `Graph.parse`, `Graph.serialize`, `to_rdf` and `from_rdf`: a `null` that is
-  a member of a list's array is a slot, and a slot is written as such a `null`. Other nulls stay dropped, and without the
-  option a `null` in a list is dropped, as JSON-LD 1.1 says, while serializing a slot raises an error naming the sequence.
+  already refuse any sequence. In JSON-LD a `null` that is a member of a list's array is a slot, and a slot is written as such a `null`. Other nulls
+  stay dropped.
   Beside this, an array directly in `"@list"` is now a nested list (it was a string of its Python `repr`), and a `null` value
   of a `@container: @list` term is now no value (it was `()`).
 - **SPARQL.** `undef` is a member in patterns, templates and `INSERT`/`DELETE DATA`, and an argument of `SEQ`; it is
@@ -214,13 +213,13 @@ what the engine follows).
   CSV `( … )` cell (written) and in a TSV one (read). Each is refused outside a sequence.
 - **Status.** `pytest -m "not webtest and not testcontainer"`: 7697 pass, the same 2 `test_plugins.py` failures as
   `rdf-sequences` (7506 pass there, run from a scratch worktree, where `test_chunk_serializer.py::test_chunk_by_size`
-  also fails with a `TypeError`; it passes here). New: `test/test_undef.py` (36). `test/data/suites/rdf-array/rdf-tests-contrib` is at rdf-undef commit
+  also fails with a `TypeError`; it passes here). New: `test/test_undef.py` (34). `test/data/suites/rdf-array/rdf-tests-contrib` is at rdf-undef commit
   `3f13149`, with `test_rdf_array_contrib.py` at 256 pass and the same 2 `xfail` as above: all 138 `undef-*` cases
   pass. `test_sequence.py`'s two uses of `SEQ(…, ?unbound)` as "an argument in error" now use `1/0`, since §3 makes the
   unbound one a slot.
-- **JSON-LD status.** `test/data/suites/rdf-array/json-ld-api-contrib` is at rdf-undef commit `fc93023`, without its array,
-  expand, compact and flatten tests, which run in jsonld.js-array; its 12 toRdf tests, 3 fromRdf and 1 refused pass.
-  `test/test_undef.py` gains 4.
+- **JSON-LD status.** `test/data/suites/rdf-array/json-ld-api-contrib` is at rdf-undef commit `29de801`, without its array,
+  expand, compact and flatten tests, which run in jsonld.js-array; its 12 toRdf tests and 3 fromRdf pass.
+  `test/test_undef.py` gains 3.
 - **Not yet.** ShEx and SHACL slots wait for rdf-undef.md §5's decisions. PyShEx-array, unchanged, reads a
   slot-bearing sequence and a slot fails a member constraint (`LIST * xsd:integer` against `( 1 undef )`).
 

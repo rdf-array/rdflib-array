@@ -108,11 +108,6 @@ class TestSyntaxes:
         with pytest.raises(Exception, match="no form for a sequence term"):
             data().serialize(format=fmt)
 
-    def test_json_ld_refuses_a_slot_without_the_option(self) -> None:
-        with pytest.raises(ValueError, match=r"empty slot.*undef"):
-            data().serialize(format="json-ld")
-        Graph().add((EX.s, EX.p, Sequence([Literal(1)]))).serialize(format="json-ld")
-
     def test_sparql_syntax(self) -> None:
         for q in ("SELECT * { ?s :p undef }", "SELECT * { BIND(undef AS ?x) }", "SELECT * { BIND(STR(undef) AS ?x) }"):  # fmt: skip
             with pytest.raises(ParseException):
@@ -194,30 +189,25 @@ def jsonld_object(list_: str, **kwargs) -> Node:
     return next(iter(Graph().parse(data=JSONLD_LIST % list_, format="json-ld", **kwargs)))[2]
 
 
-def test_jsonld_null_in_a_list_is_a_slot_under_the_option() -> None:
+def test_jsonld_null_in_a_list_is_a_slot() -> None:
     one = Literal(1)
-    assert jsonld_object("[1, null]", undef_slots=True) == Sequence([one, UNDEF])
-    assert jsonld_object("[null]", undef_slots=True) == Sequence([UNDEF])
-    assert jsonld_object('[[null, 1], {"@list": [null]}]', undef_slots=True) == Sequence(
+    assert jsonld_object("[1, null]") == Sequence([one, UNDEF])
+    assert jsonld_object("[null]") == Sequence([UNDEF])
+    assert jsonld_object('[[null, 1], {"@list": [null]}]') == Sequence(
         [Sequence([UNDEF, one]), Sequence([UNDEF])]
     )
 
 
-def test_jsonld_null_stays_dropped_without_the_option() -> None:
-    assert jsonld_object("[1, null]") == Sequence([Literal(1)])
-    assert jsonld_object("[null]") == Sequence([])
-
-
-def test_jsonld_other_nulls_stay_dropped_under_the_option() -> None:
-    assert jsonld_object('[{"@value": null}]', undef_slots=True) == Sequence([])
+def test_jsonld_other_nulls_stay_dropped() -> None:
+    assert jsonld_object('[{"@value": null}]') == Sequence([])
     data = '{"@id": "http://example/s", "http://example/p": [1, null]}'
-    assert next(iter(Graph().parse(data=data, format="json-ld", undef_slots=True)))[2] == Literal(1)
+    assert next(iter(Graph().parse(data=data, format="json-ld")))[2] == Literal(1)
     data = '{"@context": {"p": {"@id": "http://example/p", "@container": "@list"}}, "@id": "http://example/s", "p": null}'
-    assert len(Graph().parse(data=data, format="json-ld", undef_slots=True)) == 0
+    assert len(Graph().parse(data=data, format="json-ld")) == 0
 
 
-def test_jsonld_round_trip_under_the_option() -> None:
+def test_jsonld_round_trip() -> None:
     g = data()
-    text = g.serialize(format="json-ld", undef_slots=True)
+    text = g.serialize(format="json-ld")
     assert "null" in text
-    assert isomorphic(Graph().parse(data=text, format="json-ld", undef_slots=True), g)
+    assert isomorphic(Graph().parse(data=text, format="json-ld"), g)

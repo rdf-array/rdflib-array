@@ -80,7 +80,6 @@ class JsonLDSerializer(Serializer):
         use_native_types = (kwargs.get("use_native_types", False),)
         use_rdf_type = kwargs.get("use_rdf_type", False)
         auto_compact = kwargs.get("auto_compact", False)
-        undef_slots = kwargs.get("undef_slots", False)
 
         indent = kwargs.get("indent", 2)
         separators = kwargs.get("separators", (",", ": "))
@@ -94,7 +93,6 @@ class JsonLDSerializer(Serializer):
             use_native_types,
             use_rdf_type,
             auto_compact=auto_compact,
-            undef_slots=undef_slots,
         )
         if _HAS_ORJSON:
             option: int = orjson.OPT_NON_STR_KEYS
@@ -126,7 +124,6 @@ def from_rdf(
     auto_compact=False,
     startnode=None,
     index=False,
-    undef_slots=False,
 ):
     # TODO: docstring w. args and return value
     # TODO: support for index and startnode
@@ -144,7 +141,7 @@ def from_rdf(
     else:
         context = Context(context_data, base=base)
 
-    converter = Converter(context, use_native_types, use_rdf_type, undef_slots)
+    converter = Converter(context, use_native_types, use_rdf_type)
     result = converter.convert(graph)
 
     if converter.context.active:
@@ -156,16 +153,8 @@ def from_rdf(
 
 
 class Converter:
-    def __init__(
-        self,
-        context: Context,
-        use_native_types: bool,
-        use_rdf_type: bool,
-        undef_slots: bool = False,
-    ):
+    def __init__(self, context: Context, use_native_types: bool, use_rdf_type: bool):
         self.context = context
-        # rdf-undef: write the empty slot of a sequence as a null in its list
-        self.undef_slots = undef_slots
         self.use_native_types = context.active or use_native_types
         self.use_rdf_type = use_rdf_type
 
@@ -434,11 +423,6 @@ class Converter:
         # rdf-array: a sequence term is the list itself; a legacy rdf:first/rdf:rest ladder
         # stays the blank nodes it is written with
         if isinstance(l_, Sequence):
-            if SLOT in l_.elements and not self.undef_slots:
-                # rdf-undef: JSON-LD 1.1 would drop the null
-                raise ValueError(
-                    f"rdf-array: JSON-LD has no form for an empty slot without undef_slots; the graph holds {l_.n3()}"
-                )
             return list(l_.elements)
         return None
         list_nodes: list[Optional[_ObjectType]] = []

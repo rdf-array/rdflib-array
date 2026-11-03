@@ -150,7 +150,6 @@ def do_test_parser(suite_base, cat, num, inputpath, expectedpath, context, optio
             base=options.get("base", input_uri),
             version=version,
             generalized_rdf=options.get("produceGeneralizedRdf", False),
-            undef_slots=options.get("undefSlots", False),
         )
     assert isomorphic(result_graph, expected_graph), "Expected:\n%s\nGot:\n%s" % (
         expected_graph.serialize(),
@@ -174,7 +173,6 @@ def do_test_serializer(suite_base, cat, num, inputpath, expectedpath, context, o
         base=input_uri,
         use_native_types=options.get("useNativeTypes", False),
         use_rdf_type=options.get("useRdfType", False),
-        undef_slots=options.get("undefSlots", False),
     )
     _compare_json(expected_json, result_json)
 

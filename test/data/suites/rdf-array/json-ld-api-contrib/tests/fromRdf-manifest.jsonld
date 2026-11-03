@@ -4,7 +4,6 @@
     {
       "@base": "fromRdf-manifest",
       "ra": "https://rdf-array.github.io/rdf-array/vocab#",
-      "undefSlots": "ra:undefSlots",
       "requires": {
         "@id": "mf:requires",
         "@type": "@id"
@@ -99,8 +98,7 @@
       "input": "fromRdf/undef-seq01-in.nq",
       "expect": "fromRdf/undef-seq01-out.jsonld",
       "option": {
-        "specVersion": "json-ld-1.1",
-        "undefSlots": true
+        "specVersion": "json-ld-1.1"
       }
     },
     {
@@ -115,8 +113,7 @@
       "input": "fromRdf/undef-seq02-in.nq",
       "expect": "fromRdf/undef-seq02-out.jsonld",
       "option": {
-        "specVersion": "json-ld-1.1",
-        "undefSlots": true
+        "specVersion": "json-ld-1.1"
       }
     },
     {
@@ -130,22 +127,6 @@
       "purpose": "rdf-undef: a slot at depth",
       "input": "fromRdf/undef-seq03-in.nq",
       "expect": "fromRdf/undef-seq03-out.jsonld",
-      "option": {
-        "specVersion": "json-ld-1.1",
-        "undefSlots": true
-      }
-    },
-    {
-      "@id": "#tundef-seq-refused",
-      "@type": [
-        "jld:NegativeEvaluationTest",
-        "jld:FromRDFTest"
-      ],
-      "name": "undef-seq-refused",
-      "requires": "ra:UndefSlots",
-      "purpose": "rdf-undef: without the option a sequence holding a slot is refused: JSON-LD 1.1 would drop the null",
-      "input": "fromRdf/undef-seq-refused-in.nq",
-      "expectErrorCode": "empty slot",
       "option": {
         "specVersion": "json-ld-1.1"
       }
