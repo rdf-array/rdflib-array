@@ -121,7 +121,8 @@ prescribes. This predates rdf-array; `isNUMERIC(?v) && ?v >= 90` says what was m
   hashes, and the canonical graph is re-assembled with the relabelled nodes inside the sequence
   terms.
 - `rdflib.extras.shacl` reads `sh:path ( … )` as a sequence path and `sh:alternativePath ( … )`
-  as its alternatives, and builds paths back as sequences.
+  as its alternatives, and builds paths back as sequences. A ladder is not a list there, and `rdf:nil` is
+  an ordinary IRI (shacl-array.md).
 - `len(graph)` counts a `( … )` as one triple where RDF 1.1 counted 2n + 1.
 
 ## Tests

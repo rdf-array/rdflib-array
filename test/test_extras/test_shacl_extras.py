@@ -297,3 +297,40 @@ def test_build_shacl_path(
             )
             assert len(in_first) == 0
             assert len(in_second) == 0
+
+
+def _path_of(turtle: str):
+    graph = Graph().parse(
+        data="@prefix sh: <http://www.w3.org/ns/shacl#> .\n"
+        "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n"
+        "@prefix ex: <http://example.org/> .\n" + turtle,
+        format="turtle",
+    )
+    return graph, graph.value(URIRef("http://example.org/s"), SH.path)
+
+
+@pytest.mark.parametrize(
+    "turtle",
+    [
+        "ex:s sh:path [ rdf:first ex:a ; rdf:rest [ rdf:first ex:b ; rdf:rest rdf:nil ] ] .",
+        "ex:s sh:path [ sh:alternativePath [ rdf:first ex:a ; rdf:rest [ rdf:first ex:b ; rdf:rest rdf:nil ] ] ] .",
+    ],
+)
+def test_parse_shacl_path_a_ladder_is_not_a_list(turtle: str):
+    # rdf-array: shacl-array.md, "A ladder is not a list"
+    graph, root = _path_of(turtle)
+    with pytest.raises(SHACLPathError):
+        parse_shacl_path(graph, root)
+
+
+def test_parse_shacl_path_rdf_nil_is_an_ordinary_iri():
+    graph, root = _path_of("ex:s sh:path rdf:nil .")
+    assert parse_shacl_path(graph, root) == root
+
+
+def test_parse_shacl_path_a_ladder_on_a_path_node_is_ordinary_triples():
+    # rdf-array: shacl-array.md, core/path/path-strange-001
+    graph, root = _path_of(
+        "ex:s sh:path [ sh:inversePath ex:p ; rdf:first ex:a ; rdf:rest rdf:nil ] ."
+    )
+    assert parse_shacl_path(graph, root) == paths.InvPath(URIRef("http://example.org/p"))
